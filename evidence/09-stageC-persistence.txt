@@ -1,0 +1,49 @@
+### where is PGDATA now?
+volume barq-assessment_postgres-data -> /var/lib/postgresql/data
+bind  -> /docker-entrypoint-initdb.d/01-init.sql
+
+df: C:/Program Files/Git/var/lib/postgresql/data: can't find mount point
+Filesystem                Size      Used Available Use% Mounted on
+
+### create a record + bump the counter
+{"instance_id":"app-01","record":{"id":3,"title":"Persistence proof C"},"service":"barq-api","version":"2.0.0"}
+
+counter now: {"counter":6,"instance_id":"app-01","service":"barq-api","version":"2.0.0"}
+
+### destroy and recreate the app and postgres containers (volume kept)
+ Container postgres Removed 
+ Container app-02 Removed 
+ Container app-01 Removed 
+ Container postgres Started 
+ Container app-01 Started 
+ Container app-02 Started 
+NAME       STATUS
+app-01     Up 26 seconds (healthy)
+app-02     Up 26 seconds (healthy)
+nginx      Up About a minute
+postgres   Up 26 seconds (healthy)
+redis      Up About a minute (healthy)
+
+### container IDs changed?
+postgres id=17ab399e7d7eac6f458fd283fb2a6733decdf7767ae8e77feb98ad8a05f271de started=2026-09-06T21:12:12.636016515Z
+
+### does the record survive?
+{"instance_id":"app-02","records":[{"id":1,"title":"Review service readiness"},{"id":2,"title":"Document the operating procedure"},{"id":3,"title":"Persistence proof C"}],"service":"barq-api","version":"2.0.0"}
+
+### does the redis counter survive?
+{"counter":7,"instance_id":"app-02","service":"barq-api","version":"2.0.0"}
+
+### AOF on disk
+/data:
+total 12
+drwxr-xr-x    3 redis    redis         4096 Sep  6 21:11 .
+drwxr-xr-x    1 root     root          4096 Sep  6 21:11 ..
+drwx------    2 redis    redis         4096 Sep  6 21:11 appendonlydir
+
+/data/appendonlydir:
+total 20
+drwx------    2 redis    redis         4096 Sep  6 21:11 .
+drwxr-xr-x    3 redis    redis         4096 Sep  6 21:11 ..
+-rw-------    1 redis    redis           89 Sep  6 21:11 appendonly.aof.1.base.rdb
+-rw-------    1 redis    redis          324 Sep  6 21:12 appendonly.aof.1.incr.aof
+-rw-------    1 redis    redis           88 Sep  6 21:11 appendonly.aof.manifest
