@@ -1,0 +1,174 @@
+name: ci
+
+# The brief asks for push and pull_request. workflow_dispatch is added so a run
+# can be re-triggered for the final commit without an empty commit.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE_PROJECT_NAME: barq-assessment
+  PUBLIC_PORT: "8080"
+
+jobs:
+  verify:
+    name: build, start and validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ---- syntax gates: cheap checks first, so a typo fails in seconds ------
+      - name: Python syntax
+        run: python -m compileall -q app tests validate.py failure_test.py
+
+      - name: Shell syntax
+        run: |
+          for script in *.sh; do
+            echo "bash -n $script"
+            bash -n "$script"
+          done
+
+      - name: ShellCheck
+        # shellcheck is preinstalled on the GitHub ubuntu runners, so this needs
+        # no third-party action and nothing extra to trust in the supply chain.
+        run: shellcheck --severity=warning *.sh
+
+      - name: Compose config is valid
+        run: |
+          cp .env.example .env
+          # .env.example ships a placeholder, never a usable secret. CI mints a
+          # throwaway password per run, so no credential is ever committed and no
+          # two runs share one.
+          python - <<'PY'
+          import pathlib, secrets, string
+          alphabet = string.ascii_letters + string.digits
+          password = "ci-" + "".join(secrets.choice(alphabet) for _ in range(24))
+          env = pathlib.Path(".env")
+          env.write_text(env.read_text().replace(
+              "POSTGRES_PASSWORD=CHANGE_ME_BEFORE_FIRST_START",
+              "POSTGRES_PASSWORD=" + password))
+          PY
+          docker compose config >/dev/null
+          echo "compose config OK"
+
+      # ---- app-only unit tests: fast, no containers -------------------------
+      - name: Unit tests (fake dependencies)
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r requirements.txt
+          python -m unittest discover -s tests -v
+
+      # ---- build, start, wait, validate -------------------------------------
+      - name: Build images
+        run: docker compose build
+
+      - name: Start the stack and wait for healthy
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Show what is running
+        run: docker compose ps -a
+
+      - name: Validate the environment
+        run: python validate.py --timeout 120
+
+      - name: Failure and recovery test
+        run: python failure_test.py --seconds 8
+
+      - name: Backup and restore round trip
+        run: |
+          set -euo pipefail
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"title":"ci backup marker"}' \
+            "http://127.0.0.1:${PUBLIC_PORT}/records" >/dev/null
+          DUMP="$(./backup.sh)"
+          echo "dump: $DUMP"
+          # Change the data after the dump, then prove the restore undoes it.
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"title":"ci row created AFTER the dump"}' \
+            "http://127.0.0.1:${PUBLIC_PORT}/records" >/dev/null
+          FORCE=1 ./restore.sh "$DUMP"
+          if curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/records" \
+               | grep -q 'ci row created AFTER the dump'; then
+            echo "FAIL: the post-dump row survived the restore"
+            exit 1
+          fi
+          curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/records" \
+            | grep -q 'ci backup marker'
+          echo "restore verified: post-dump row gone, pre-dump row present"
+
+      - name: Persistence survives container recreation
+        run: |
+          set -euo pipefail
+          MARKER="ci persistence $(date -u +%Y%m%dT%H%M%SZ)"
+          curl -fsS -H 'Content-Type: application/json' \
+            -d "{\"title\":\"${MARKER}\"}" \
+            "http://127.0.0.1:${PUBLIC_PORT}/records" >/dev/null
+          BEFORE="$(docker inspect postgres --format '{{.Id}}')"
+          # Recreate the app and database containers, keeping the named volume.
+          docker compose rm -sf app-01 app-02 postgres
+          docker compose up -d --wait --wait-timeout 180
+          AFTER="$(docker inspect postgres --format '{{.Id}}')"
+          [ "$BEFORE" != "$AFTER" ] || { echo "FAIL: postgres was not recreated"; exit 1; }
+          curl -fsS "http://127.0.0.1:${PUBLIC_PORT}/records" | grep -q "$MARKER"
+          echo "persistence proved: ${BEFORE:0:12} -> ${AFTER:0:12}, record survived"
+
+      - name: Re-validate after recreation
+        run: python validate.py --timeout 120
+
+      # ---- evidence and cleanup, whatever happened above --------------------
+      - name: Container logs
+        if: always()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  scan:
+    name: image and filesystem scan (extra credit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Reported, not gated. A base-image CVE published this morning is a real
+    # signal, but it is not a reason to fail a pipeline that changed a README:
+    # the fix is a base-image bump, which is its own commit and its own review.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the application image
+        run: |
+          cp .env.example .env
+          docker build -t barq-assessment-app:scan .
+
+      - name: Trivy - application image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: barq-assessment-app:scan
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Trivy - repository secrets and misconfiguration
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: secret,misconfig
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"

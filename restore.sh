@@ -57,7 +57,7 @@ newest_dump() {
 }
 
 main() {
-    local id user db dump before after
+    local id user db dump before after status
     dump="${1:-$(newest_dump)}"
     [ -n "$dump" ] || die "no dump given and none found in $BACKUP_DIR - run ./backup.sh first"
     [ -s "$dump" ] || die "dump not found or empty: $dump"
@@ -85,7 +85,7 @@ main() {
     set +e
     docker exec -i "$id" pg_restore --clean --if-exists --no-owner --no-privileges \
         -U "$user" -d "$db" < "$dump" 2>/tmp/barq-restore.log
-    local status=$?
+    status=$?
     set -e
     [ "$status" -eq 0 ] || { info "pg_restore exited $status; output follows"; cat /tmp/barq-restore.log >&2; }
 
