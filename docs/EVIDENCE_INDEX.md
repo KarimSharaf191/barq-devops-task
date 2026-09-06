@@ -1,12 +1,162 @@
 # Evidence and submission index
 
-- Repository URL:
-- Final commit:
-- Matching CI run:
-- Continuous 12-18 minute video URL:
-- Challenge receipt ID:
-- Starting video commit:
-- Later documentation-only commits, if any:
+## Submission
 
-For each requirement, link: file/output -> commit -> video timestamp.
-Match the final README, diagram, GitHub code and video (three instances, public port 8090).
+| | |
+|---|---|
+| Repository URL | `__________________` (fill in after the first push) |
+| Final commit | `__________________` |
+| Matching CI run | `__________________` |
+| Continuous 12-18 minute video URL | `__________________` |
+| Challenge receipt ID | `__________________` (from `.assessment/challenge.json`, created during the recording) |
+| Starting video commit | `__________________` |
+| Later documentation-only commits | `__________________` |
+
+Placeholders above are filled in once the repository is pushed and the video is recorded.
+Everything below is already in the repository and verifiable now.
+
+---
+
+## Commit history
+
+Progressive, one concern per commit: investigate, then fix, then verify. Every fix commit
+names the faults it closes and the evidence file proving the retest.
+
+| Commit | Type | What it does |
+|---|---|---|
+| `02fe9c8` | baseline | Initial assessment starter v1.0.0 (supplied) |
+| `9b08964` | baseline | Release assessment starter v2.0.0 (supplied, tag `starter-v2.0.0`) |
+| `69cfc02`, `fba6cc4`, `8442da3` | baseline | Supplied release commits, kept intact |
+| `9dd0850` | investigate | Baseline failure evidence, 15 faults, no fixes yet |
+| `9f9a8fe` | fix | Connectivity: nginx port, `APP_HOST`, upstream port, health path |
+| `43495c3` | fix | Dependency URLs, password drift, secrets out of Git and the image, identity |
+| `a1757e4` | fix | Persistence: PGDATA on the named volume, Redis AOF |
+| `e59319c` | fix | Network isolation: nginx off `backend`, datastore ports removed |
+| `566601c` | fix | Availability: failover, shared LB zone, restart policy, resource limits |
+| `b828e52` | fix | Image: non-root, gunicorn, stdlib healthcheck, read-only root |
+| `90331a9` | feat | `validate.py`, `failure_test.py`, and the retry-budget fix they exposed |
+| `da49e44` | feat | Verified `backup.sh` / `restore.sh` |
+| `7e8f5b4` | ci | Build, start, validate and prove pipeline, plus a Trivy scan job |
+| `c383369` | analysis | `scripts/analyze_logs.py` and all ten log answers |
+| _(docs)_ | docs | README, decisions, security review, AI disclosure, diagram, this index |
+
+---
+
+## Requirement -> evidence -> commit
+
+### Part 1 - Investigation
+
+| Requirement | File / output | Commit | Video |
+|---|---|---|---|
+| Baseline kept, committed before technical changes | tag `starter-v2.0.0`; `git diff starter-v2.0.0 -- logs/` is empty | `8442da3`, `9dd0850` | `__:__` |
+| Progressive commits: investigate -> fix -> verify | `git log --oneline` (table above) | all | `__:__` |
+| Symptoms, hypotheses, commands, results, failed attempts | [`troubleshooting.md`](../troubleshooting.md) - 17 entries | `9dd0850`+ | `__:__` |
+| Root cause, fix, retest evidence per fault | `troubleshooting.md` summary table + entries 12-17 | each fix commit | `__:__` |
+| Four wrong hypotheses recorded honestly | `troubleshooting.md` 01, 10, 16, 17 | `9dd0850`, `90331a9` | `__:__` |
+| Two regressions I introduced, documented as mine | `troubleshooting.md` 15, 17 | `b828e52`, `90331a9` | `__:__` |
+| All three logs analysed, originals unchanged | [`log_analysis.md`](../log_analysis.md), [`scripts/analyze_logs.py`](../scripts/analyze_logs.py), [`evidence/18`](../evidence/18-log-analysis-output.txt) | `c383369` | `__:__` |
+| Every log-template question answered | `log_analysis.md` sections 1-10 | `c383369` | `__:__` |
+| Counts, timeline, correlation, double-count avoidance | `log_analysis.md` 2, 4, 6, 7, 8 | `c383369` | `__:__` |
+
+### Part 2 - Docker, networking and NGINX
+
+| Requirement | File / output | Commit | Video |
+|---|---|---|---|
+| Two Flask instances behind NGINX, working PostgreSQL and Redis | [`docker-compose.yml`](../docker-compose.yml), [`evidence/13`](../evidence/13-validate-pass.txt) | `9f9a8fe`, `43495c3` | `__:__` |
+| Only NGINX published; app/PostgreSQL/Redis not published | `validate.py` `only-edge-publishes-a-host-port`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
+| NGINX + apps on frontend; apps + datastores on backend | `validate.py` `isolation-*`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
+| NGINX blocked from PostgreSQL/Redis | `getent` exit 2 inside nginx, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
+| Service names, not container IPs | `nginx/nginx.conf` upstream, `DATABASE_URL`/`REDIS_URL` | `43495c3` | `__:__` |
+| Container names app-01, app-02, nginx, postgres, redis | `docker compose ps` | starter, kept | `__:__` |
+| Network names ending frontend / backend | `barq-assessment_frontend`, `_backend` | starter, kept | `__:__` |
+| Distinct app identities | [`evidence/07`](../evidence/07-stageB-verify.txt), 10/10 split | `43495c3` | `__:__` |
+| Named PostgreSQL volume; Redis persistence | `validate.py` `postgres-pgdata-on-named-volume`, `redis-persistence-enabled` | `a1757e4` | `__:__` |
+| Env vars, health/readiness, restart policies, resource limits | `docker-compose.yml`, `validate.py` `restart-policy-set` / `memory-limit-set` | `566601c` | `__:__` |
+| Non-root, minimal dependencies | `uid=10001(app)`, `uid=101(nginx)`, [`evidence/12`](../evidence/12-stageF-hardening.txt) | `b828e52` | `__:__` |
+| Health-check tools installed in the image, explained | [`app/healthcheck.py`](../app/healthcheck.py), busybox `wget` for nginx, [`decisions.md`](../decisions.md) 3 | `b828e52` | `__:__` |
+| Base-image choice explained | [`decisions.md`](../decisions.md) 1 | `b828e52` | `__:__` |
+| Secrets out of images, code and Compose; safe `.env.example` | [`.env.example`](../.env.example), [`evidence/07`](../evidence/07-stageB-verify.txt) | `43495c3` | `__:__` |
+| All required endpoints, real DB/cache operations | [`evidence/12`](../evidence/12-stageF-hardening.txt), `validate.py` `endpoint-*` | `b828e52` | `__:__` |
+
+### Part 3 - Validation, persistence and CI
+
+| Requirement | File / output | Commit | Video |
+|---|---|---|---|
+| `validate.py` with bounded waits, PASS/FAIL, non-zero exit | [`validate.py`](../validate.py), [`evidence/13`](../evidence/13-validate-pass.txt) - 46/46, exit 0 | `90331a9` | `__:__` |
+| Validation actually fails when it should | [`evidence/14`](../evidence/14-validate-negative-tests.txt) - exit 1 twice | `90331a9` | `__:__` |
+| Checks isolation and prohibited host ports | `validate.py` `isolation-*`, `prohibited-host-port-closed[*]` | `90331a9` | `__:__` |
+| `failure_test.py`: stop, measure, restore, verify recovery | [`failure_test.py`](../failure_test.py), [`evidence/15`](../evidence/15-failure-test.txt) | `90331a9` | `__:__` |
+| Traffic and errors measured during failure | [`evidence/15`](../evidence/15-failure-test.txt) - 100.00% availability, per-phase p50/p95 | `90331a9` | `__:__` |
+| Recovered backend proven to serve again | [`evidence/15`](../evidence/15-failure-test.txt) phase 3 | `90331a9` | `__:__` |
+| Harsher failure mode measured (paused backend) | [`evidence/16`](../evidence/16-paused-backend-behaviour.txt) - 3x504 before, 0 after | `90331a9` | `__:__` |
+| `backup.sh` / `restore.sh`, restore proven | [`evidence/17`](../evidence/17-backup-restore-proof.txt) | `da49e44` | `__:__` |
+| Record survives app + PostgreSQL container recreation | [`evidence/09`](../evidence/09-stageC-persistence.txt) | `a1757e4` | `__:__` |
+| Exact test/backup/restore commands documented | [`README.md`](../README.md) | docs | `__:__` |
+| CI on push and pull request | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `7e8f5b4` | `__:__` |
+| CI: checkout -> syntax -> build -> start -> wait -> validate | `ci.yml` `verify` job, 17 steps | `7e8f5b4` | `__:__` |
+| CI fails when validation fails | `validate.py` exits 1; the step is not `continue-on-error` | `7e8f5b4` | `__:__` |
+| Extra credit: image / security scan | `ci.yml` `scan` job (Trivy image + fs secrets/misconfig) | `7e8f5b4` | `__:__` |
+
+### Part 4 - Documentation
+
+| Requirement | File | Commit | Video |
+|---|---|---|---|
+| README: setup, build, start/stop, test, failure, backup/restore, cleanup | [`README.md`](../README.md) | docs | `__:__` |
+| troubleshooting.md with failed attempts and retests | [`troubleshooting.md`](../troubleshooting.md) | `9dd0850`+ | `__:__` |
+| log_analysis.md: all answers, commands, counts, correlation | [`log_analysis.md`](../log_analysis.md) | `c383369` | `__:__` |
+| decisions.md: at least 5 decisions with trade-offs and limits | [`decisions.md`](../decisions.md) - 12 | docs | `__:__` |
+| security_review.md: at least 8 concrete risks | [`security_review.md`](../security_review.md) - 14, of which 4 remain open | docs | `__:__` |
+| Implemented fixes separated from production plans | `security_review.md` Part A vs Part B | docs | `__:__` |
+| AI_USAGE.md | [`AI_USAGE.md`](../AI_USAGE.md) | docs | `__:__` |
+| architecture.png / .pdf | [`architecture.png`](../architecture.png), [`.pdf`](../architecture.pdf), generated by [`scripts/make_architecture_diagram.py`](../scripts/make_architecture_diagram.py) | docs | `__:__` |
+| All brief questions answered | [`README.md`](../README.md) - "Answers to the questions in the brief" | docs | `__:__` |
+
+### Part 5 - Video demonstration
+
+To be completed during the recording. Each row gets its timestamp and, where a change is
+made live, its commit hash.
+
+| Required live action | Planned evidence | Commit | Video |
+|---|---|---|---|
+| Repository, starting commit, clean `git status` | `git log -1`, `git status` | - | `__:__` |
+| Build/start the stopped environment, show health | `docker compose up -d --wait`, `ps` | - | `__:__` |
+| Test `/`, `/health`, `/ready`, `/records`, `/counter` | curl block from README | - | `__:__` |
+| `/instance` proves both backends serve | 20-request loop, 10/10 split | - | `__:__` |
+| Stop one backend, show traffic and errors, recover | `failure_test.py` | - | `__:__` |
+| Record survives app + PostgreSQL recreation | README persistence block | - | `__:__` |
+| Run validation and the failure test | `validate.py`, `failure_test.py` | - | `__:__` |
+| Demonstrate one historical-log finding | `python scripts/analyze_logs.py --section 7` | - | `__:__` |
+| Run `./video_challenge.sh` once, first time in this copy | `.assessment/challenge.json` receipt | - | `__:__` |
+| Diagnose and fix the injected fault without `compose down` | live | `______` | `__:__` |
+| Change public port 8080 -> 8090 live | `.env` edit + `up -d nginx` | `______` | `__:__` |
+| Add a third instance live, prove all three respond | `app-03` in compose + nginx upstream + reload | `______` | `__:__` |
+| Rerun validation with three instances | `validate.py --url http://127.0.0.1:8090` | - | `__:__` |
+| `git status`, `git diff`, explain, commit on screen | live | `______` | `__:__` |
+| Push video commits | live | `______` | `__:__` |
+
+**What is known about the challenge before recording.** `scripts/video_challenge.py` is
+readable and was read - the starter README explicitly permits this ("Read its code if
+needed; do not run it early"). It has **not** been run; `.assessment/` does not exist in
+this working copy. Its preflight requires every service healthy and unpaused, the exact
+network layout, and both initial instances answering through the public URL - all of which
+`validate.py` already asserts. It then injects **one of three** faults at random:
+disconnect `app-02` from `frontend`, disconnect `redis` from `backend`, or pause `app-01`.
+The diagnosis path for each is `docker inspect` network membership and `.State.Paused`,
+and the repair is `docker network connect` or `docker unpause` - neither needs
+`docker compose down`. The paused-backend signature was measured in advance and is in
+[`evidence/16`](../evidence/16-paused-backend-behaviour.txt).
+
+---
+
+## How to re-verify everything from a clean checkout
+
+```bash
+cp .env.example .env          # then set POSTGRES_PASSWORD
+docker compose -p barq-assessment up -d --build --wait
+python validate.py            # 46 checks, exit 0
+python failure_test.py        # three phases, exit 0
+./backup.sh && FORCE=1 ./restore.sh
+python scripts/analyze_logs.py
+python -m unittest discover -s tests
+git diff --stat starter-v2.0.0 -- logs/    # empty: originals untouched
+```
