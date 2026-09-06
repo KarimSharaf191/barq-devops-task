@@ -1,0 +1,32 @@
+{
+  "distinct_client_requests": 720,
+  "error_rate_5xx_percent": 13.19,
+  "exact_duplicate_lines": {
+    "access.log": 5,
+    "application.log": 2
+  },
+  "latency_seconds": {
+    "median": 0.054,
+    "p95": 2.001,
+    "p95_successful_only": 0.093
+  },
+  "malformed_lines": {
+    "access.log": 1,
+    "application.log": 1,
+    "error.log": 0
+  },
+  "requests_never_reaching_a_backend": 40,
+  "retried_and_succeeded": 19,
+  "retried_requests": 19,
+  "status_counts": {
+    "200": 615,
+    "404": 10,
+    "502": 40,
+    "503": 47,
+    "504": 8
+  },
+  "window_utc": [
+    "2026-08-20T11:00:00.015Z",
+    "2026-08-20T11:29:57.578Z"
+  ]
+}

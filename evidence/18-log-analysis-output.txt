@@ -1,0 +1,239 @@
+1. Coverage, valid / malformed / duplicate lines per file
+   access.log        726 lines   720 unique valid   1 malformed   5 exact duplicates
+                    covers 2026-08-20T11:00:00.015Z .. 2026-08-20T11:29:57.578Z
+                      malformed line 311: '{"timestamp":"2026-08-20T11:12:48Z","request_id":'
+                      duplicate request_ids: lab-000121, lab-000241, lab-000361, lab-000481, lab-000601
+   application.log   730 lines   727 unique valid   1 malformed   2 exact duplicates
+                    covers 2026-08-20T11:00:00.015Z .. 2026-08-20T11:29:57.578Z
+                      malformed line 401: '{"timestamp":"2026-08-20T11:17:00Z","event":'
+                      duplicate request_ids: lab-000181, lab-000421
+   error.log          68 lines    68 parsed         0 unparsed
+                    covers 2026/08/20 11:05:02 .. 2026/08/20 11:30:00
+   Time zone is UTC for all three files (logs/README.md); access and
+   application timestamps are ISO-8601 with milliseconds, error.log is
+   NGINX's own 'YYYY/MM/DD HH:MM:SS' format with second resolution.
+
+2. Distinct client requests, and how retries avoid being double counted
+   unique valid access lines ......... 720
+   distinct request_id values ........ 720
+   upstream attempts recorded ........ 739   <- NOT the request count
+   error.log lines carrying a request_id 67   <- NOT the request count
+
+   One access line == one client request, written once when the client
+   response completes. A retry adds a value to `upstream`, not a line:
+   19 requests carry 2 upstream attempts. Counting attempts would report
+   739 requests instead of 720.
+
+   Independent cross-check from the other side of the proxy:
+     unique application http_request records .......... 680
+     requests with no application record at all ....... 40
+     sum ............................................. 720
+   which equals the 720 distinct client requests. The 40 with no application
+   record are exactly the requests the backend never received.
+
+3. Final client status counts and error rate
+   200 ..........  615   85.42%
+   404 ..........   10    1.39%
+   502 ..........   40    5.56%
+   503 ..........   47    6.53%
+   504 ..........    8    1.11%
+   ---
+   denominator: 720 distinct client requests (deduplicated access lines,
+   malformed lines excluded, retries counted once).
+   5xx error rate ... 95/720 = 13.19%
+   4xx client rate .. 10/720 = 1.39%  (all /missing, a deliberate probe)
+   4xx+5xx .......... 105/720 = 14.58%
+   The 5xx rate is the service-health number: the 404s are a monitor
+   requesting /missing on purpose, not a fault of this stack.
+
+4. Which paths, windows and backends account for the failures
+   502 x40  2026-08-20T11:05:02.503Z .. 2026-08-20T11:09:57.503Z
+        paths    {'/health': 10, '/records': 10, '/counter': 10, '/': 10}
+        upstream {'172.23.0.12:8080': 40}
+   503 x47  2026-08-20T11:12:09.525Z .. 2026-08-20T11:21:45.041Z
+        paths    {'/ready': 23, '/counter': 16, '/records': 8}
+        upstream {'172.23.0.12:8080': 24, '172.23.0.11:8080': 23}
+   504 x8   2026-08-20T11:25:14.501Z .. 2026-08-20T11:26:47.001Z
+        paths    {'/records': 8}
+        upstream {'172.23.0.12:8080': 4, '172.23.0.11:8080': 4}
+
+   Per-minute request and 5xx counts (each row is 24 client requests):
+     11:00  n= 24  5xx= 0  {200: 23, 404: 1}            
+     11:01  n= 24  5xx= 0  {200: 24}                    
+     11:02  n= 24  5xx= 0  {200: 24}                    
+     11:03  n= 24  5xx= 0  {200: 23, 404: 1}            
+     11:04  n= 24  5xx= 0  {200: 24}                    
+     11:05  n= 24  5xx= 8  {200: 16, 502: 8}            ########
+     11:06  n= 24  5xx= 8  {200: 15, 404: 1, 502: 8}    ########
+     11:07  n= 24  5xx= 8  {200: 16, 502: 8}            ########
+     11:08  n= 24  5xx= 8  {200: 16, 502: 8}            ########
+     11:09  n= 24  5xx= 8  {200: 15, 404: 1, 502: 8}    ########
+     11:10  n= 24  5xx= 0  {200: 24}                    
+     11:11  n= 24  5xx= 0  {200: 24}                    
+     11:12  n= 24  5xx= 8  {200: 16, 503: 8}            ########
+     11:13  n= 24  5xx= 7  {200: 16, 404: 1, 503: 7}    #######
+     11:14  n= 24  5xx= 8  {200: 16, 503: 8}            ########
+     11:15  n= 24  5xx= 8  {200: 16, 503: 8}            ########
+     11:16  n= 24  5xx= 0  {200: 23, 404: 1}            
+     11:17  n= 24  5xx= 0  {200: 24}                    
+     11:18  n= 24  5xx= 0  {200: 24}                    
+     11:19  n= 24  5xx= 0  {200: 23, 404: 1}            
+     11:20  n= 24  5xx= 8  {200: 16, 503: 8}            ########
+     11:21  n= 24  5xx= 8  {200: 16, 503: 8}            ########
+     11:22  n= 24  5xx= 0  {200: 24}                    
+     11:23  n= 24  5xx= 0  {200: 23, 404: 1}            
+     11:24  n= 24  5xx= 0  {200: 24}                    
+     11:25  n= 24  5xx= 4  {200: 20, 504: 4}            ####
+     11:26  n= 24  5xx= 4  {200: 19, 404: 1, 504: 4}    ####
+     11:27  n= 24  5xx= 0  {200: 24}                    
+     11:28  n= 24  5xx= 0  {200: 24}                    
+     11:29  n= 24  5xx= 0  {200: 23, 404: 1}            
+
+5. Median and p95 client latency
+   Units: access.log `request_time` is SECONDS; application.log
+   `duration_ms` is MILLISECONDS. They agree - e.g. lab-000292 is
+   request_time 2.025 and duration_ms 2025.0 - so they must never be
+   pooled into one sample.
+   Method: nearest-rank percentile on the sorted sample, which always
+   returns a measurement that actually happened. No interpolation.
+   all requests       n=720  median 0.054s   p95 2.001s   p99 2.025s   max 2.025s
+   2xx/3xx/4xx only   n=625  median 0.055s   p95 0.093s   p99 0.120s   max 0.120s
+   5xx only           n=95   median 0.041s   p95 2.025s   p99 2.025s   max 2.025s
+   The headline p95 is set entirely by the failing minority: successful
+   requests sit at 0.093s p95 while the 5xx tail sits at 2.025s, the
+   ~2s dependency timeout inside the application.
+
+6. Which requests retried upstream, and how many recovered
+   requests with >1 upstream attempt ... 19
+   of those, final status < 400 ........ 19  (100%)
+   retry window ........................ 2026-08-20T11:05:07.620Z .. 2026-08-20T11:09:37.620Z
+   upstream_status patterns ............ {'502, 200': 19}
+
+   Reconciliation with error.log, which is the only place a failed
+   attempt appears when the retry succeeded:
+     connect-refused entries ........... 59
+     ... that ended 502 for the client . 40
+     ... that were retried and returned  19
+   Those two add up to 59, so every refused connect maps to exactly one
+   client request and none is counted twice.
+
+7. Incident timeline (access + error + application evidence)
+   11:00:00  steady state begins. 24 requests/minute, 7 paths, one client
+             (192.0.2.24). No 5xx for five minutes.
+
+   11:05:02  INCIDENT 1 - backend app-02 (172.23.0.12) stops accepting
+             connections. error.log: 59 x connect() failed (111: Connection
+             refused), 2026/08/20 11:05:02 .. 2026/08/20 11:09:57, every one naming
+             upstream http://172.23.0.12:8080.
+             access.log: 40 x 502 (2026-08-20T11:05:02.503Z .. 2026-08-20T11:09:57.503Z), all
+             attributed to 172.23.0.12 and none to 172.23.0.11.
+             application.log: NOTHING for those 40 request ids - the
+             process never received them. That absence is the proof this
+             is a connectivity fault and not an application fault.
+             19 further requests were retried onto 172.23.0.11 and returned
+             200, so the outage was partially masked from the client.
+   11:09:57  last refused connect. 11:10 onward is clean.
+
+   11:12:09  INCIDENT 2a - Redis stops answering in time. application.log:
+             31 x dependency_error dependency=redis error_type=TimeoutError,
+             2026-08-20T11:12:09.524Z .. 2026-08-20T11:15:52.024Z, on BOTH
+             instances ({'app-02': 16, 'app-01': 15}).
+             error.log is silent - the proxy was healthy throughout.
+             Client impact: 503 on /ready and /counter, ~2.02s each.
+   11:15:52  Redis errors stop.
+
+   11:20:07  INCIDENT 2b - PostgreSQL authentication starts failing.
+             application.log: 16 x dependency_error dependency=postgres
+             error_type=InvalidPassword, 2026-08-20T11:20:07.540Z .. 2026-08-20T11:21:45.040Z,
+             again on both instances. InvalidPassword is a credential
+             fault, not a reachability fault: the server answered and
+             rejected the login.
+   11:21:45  PostgreSQL errors stop. Total 503s: 47.
+
+   11:25:14  INCIDENT 3 - slow upstream. error.log: 8 x upstream timed
+             out (110) while reading response header, 2026/08/20 11:25:14 .. 2026/08/20 11:26:47,
+             hitting BOTH peers. access.log: 8 x 504 on /records only.
+             No dependency_error rows, so the app never reported a failure
+             of its own: the requests were still in flight when the proxy
+             gave up.
+   11:26:47  last timeout.
+
+   11:30:00  error.log notice: log collector rotated stream. End of capture.
+
+8. One correlated failed request and one successful request
+   --- FAILED : lab-000292 ---
+   access.log      {"client": "192.0.2.24", "method": "GET", "path": "/ready", "request_id": "lab-000292", "request_time": 2.025, "status": 503, "timestamp": "2026-08-20T11:12:09.525Z", "upstream": "172.23.0.12:8080", "upstream_status": "503"}
+   application.log {"dependency": "redis", "error_type": "TimeoutError", "event": "dependency_error", "instance_id": "app-02", "level": "ERROR", "request_id": "lab-000292", "timestamp": "2026-08-20T11:12:09.524Z"}
+   application.log {"duration_ms": 2025.0, "event": "http_request", "instance_id": "app-02", "level": "WARN", "method": "GET", "path": "/ready", "request_id": "lab-000292", "status": 503, "timestamp": "2026-08-20T11:12:09.525Z"}
+
+   --- SUCCEEDED : lab-000002 ---
+   access.log      {"client": "192.0.2.24", "method": "GET", "path": "/health", "request_id": "lab-000002", "request_time": 0.032, "status": 200, "timestamp": "2026-08-20T11:00:02.532Z", "upstream": "172.23.0.12:8080", "upstream_status": "200"}
+   application.log {"duration_ms": 32.0, "event": "http_request", "instance_id": "app-02", "level": "INFO", "method": "GET", "path": "/health", "request_id": "lab-000002", "status": 200, "timestamp": "2026-08-20T11:00:02.532Z"}
+
+   --- RETRIED THEN SUCCEEDED : lab-000124 ---
+   access.log      {"client": "192.0.2.24", "method": "GET", "path": "/ready", "request_id": "lab-000124", "request_time": 0.12, "status": 200, "timestamp": "2026-08-20T11:05:07.620Z", "upstream": "172.23.0.12:8080, 172.23.0.11:8080", "upstream_status": "502, 200"}
+   application.log {"duration_ms": 120.0, "event": "http_request", "instance_id": "app-01", "level": "INFO", "method": "GET", "path": "/ready", "request_id": "lab-000124", "status": 200, "timestamp": "2026-08-20T11:05:07.620Z"}
+   error.log       2026/08/20 11:05:07 [error] 31#31: *124 connect() failed (111: Connection refused) while connecting to upstream, request_id=lab-000124, request: "GET 
+
+
+9. Proxy/connectivity failures versus dependency/application failures
+   The three signatures are separable, and each is proved by a different
+   file agreeing or staying silent:
+
+   502 - PROXY/CONNECTIVITY. error.log has a connect() failed (111) line
+         for the request; application.log has no record of it at all.
+         Proof: 40 of the 40 requests that ended 502 have zero
+         application-log rows. The backend process was not listening, so
+         it could not have logged anything.
+
+   503 - DEPENDENCY/APPLICATION. error.log is silent; application.log
+         carries an explicit dependency_error with the dependency name
+         and exception type, immediately followed by the 503 http_request
+         row for the same request_id. The app was healthy enough to
+         diagnose its own failure and answer. Both instances were hit,
+         which points at the shared dependency rather than one backend.
+
+   504 - PROXY GAVE UP ON A SLOW BACKEND. error.log has 'upstream timed
+         out (110) while reading response header'; application.log has no
+         completion row for those requests, because the app had accepted
+         the connection and had not finished. This is the ambiguous case:
+         the work may well have been done and only the answer was lost.
+         For /records, a write, that ambiguity is the reason a proxy
+         should not blindly retry POSTs.
+
+   Latency separates them again: 502s are fast (a refused connect is
+   immediate), 503s cluster at ~2.02s (the app's own dependency timeout),
+   504s at the proxy's read timeout.
+
+10. What the logs do not prove, and what to check next
+   Not proved by these files:
+   - WHY app-02 stopped accepting connections. A refused connect proves
+     nothing was listening; it does not distinguish a crash, an OOM kill,
+     a deploy, or a container that was simply stopped. No exit code, no
+     restart count and no kernel log is present here.
+   - WHY Redis timed out. TimeoutError is the client's view. Server-side
+     saturation, a blocking command, an AOF rewrite stall and a network
+     drop all look identical from this side.
+   - Whether the PostgreSQL InvalidPassword burst was a rotated secret, a
+     partially rolled-out config, or a wrong value in one environment.
+     16 failures on both instances inside 98 seconds fits a credential
+     change far better than it fits a network fault - but that is an
+     inference, not evidence.
+   - Whether the 8 timed-out /records writes were committed. The proxy
+     gave up before the answer arrived; the logs cannot say what the
+     database did.
+   - Anything about a second client. Every line has client 192.0.2.24, so
+     these numbers describe one synthetic generator, not real user traffic.
+
+   What I would check next in a running environment:
+   - docker inspect app-02 for State.ExitCode, OOMKilled and RestartCount,
+     and `docker events` around 11:05:02.
+   - Redis INFO commandstats / latency history / slowlog, and whether an
+     AOF rewrite or a maxmemory eviction coincided with 11:12.
+   - The PostgreSQL server log for FATAL password authentication failed,
+     which names the role and the client address the app log cannot.
+   - Whether rows exist for the 8 timed-out /records requests, which
+     settles the duplicate-write question the 504s leave open.
+   - Resource limits and host pressure for the whole window: none of these
+     logs carries CPU, memory or connection-pool data.
+
