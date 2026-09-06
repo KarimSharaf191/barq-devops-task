@@ -1,0 +1,40 @@
+
+#11 [app-01 6/7] COPY --chown=app:app app/ ./app/
+#11 DONE 0.1s
+
+#12 [app-02 7/7] COPY config/app.env /srv/app.env
+#12 DONE 0.1s
+
+#12 [app-01 7/7] COPY config/app.env /srv/app.env
+#12 DONE 0.1s
+
+#13 [app-02] exporting to image
+#13 exporting layers
+#13 exporting layers 1.3s done
+#13 exporting manifest sha256:2607c9166ace506b5b5542199a7419288d61de21c0f5dba8ef7dfbfe75e46684 0.0s done
+#13 exporting config sha256:93b5b2e408263529f6d096be12a4c34a000f39376a500bd1fe0ed2d1339ac410 0.0s done
+#13 exporting attestation manifest sha256:1912b9bcedc4a388602879f5074b78823a4d19c8b161ff40fd348d2aef5ef6bb
+#13 exporting attestation manifest sha256:1912b9bcedc4a388602879f5074b78823a4d19c8b161ff40fd348d2aef5ef6bb 0.1s done
+#13 exporting manifest list sha256:6eaa513d2c5fd9cc6dd023d4e236fc41ac830b24d490e8eaef33069c1fd26064 0.0s done
+#13 naming to docker.io/library/barq-assessment-app-02:latest done
+#13 unpacking to docker.io/library/barq-assessment-app-02:latest
+#13 unpacking to docker.io/library/barq-assessment-app-02:latest 0.5s done
+#13 DONE 2.0s
+
+#14 [app-01] exporting to image
+#14 exporting layers 1.3s done
+#14 exporting manifest sha256:18417abeaf5d3a0e5b369e32c69f530cf7c0e2899c29b64094a333d6c6f49aee 0.0s done
+#14 exporting config sha256:5c2d2669d0a5ca9d90718f3611d8296fa3a1bb7c244822bbc752b95528c2a1fd 0.0s done
+#14 exporting attestation manifest sha256:ddb02f097560d573a63f2b6cdc23569e283ee5052ea1527265490ff866f00ec8 0.1s done
+#14 exporting manifest list sha256:d11e35c1332794072bf525033931dae82db0713f16f90daefa878c1550aa357d 0.0s done
+#14 naming to docker.io/library/barq-assessment-app-01:latest done
+#14 unpacking to docker.io/library/barq-assessment-app-01:latest 0.5s done
+#14 DONE 2.0s
+
+#15 [app-01] resolving provenance for metadata file
+#15 DONE 0.0s
+
+#16 [app-02] resolving provenance for metadata file
+#16 DONE 0.0s
+ Image barq-assessment-app-02 Built 
+ Image barq-assessment-app-01 Built 

@@ -1,0 +1,26 @@
+ Container postgres Creating 
+ Container app-02 Creating 
+ Container app-01 Creating 
+ Container redis Creating 
+ Container app-02 Created 
+ Container redis Created 
+ Container app-01 Created 
+ Container nginx Creating 
+ Container postgres Created 
+ Container nginx Created 
+ Container app-02 Starting 
+ Container postgres Starting 
+ Container redis Starting 
+ Container app-01 Starting 
+ Container postgres Started 
+ Container redis Started 
+ Container app-01 Started 
+ Container app-02 Started 
+ Container nginx Starting 
+ Container nginx Started 
+NAME       SERVICE    STATUS                      PORTS
+app-01     app-01     Up 26 seconds (unhealthy)   8080/tcp
+app-02     app-02     Up 26 seconds (unhealthy)   8080/tcp
+nginx      nginx      Up 25 seconds               127.0.0.1:8080->81/tcp
+postgres   postgres   Up 25 seconds (healthy)     5432/tcp
+redis      redis      Up 25 seconds (healthy)     6379/tcp

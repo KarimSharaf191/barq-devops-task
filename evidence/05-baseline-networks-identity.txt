@@ -1,0 +1,10 @@
+### network membership (baseline)
+nginx     : barq-assessment_backend barq-assessment_frontend
+app-01    : barq-assessment_backend barq-assessment_frontend
+app-02    : barq-assessment_backend barq-assessment_frontend
+postgres  : barq-assessment_backend
+redis     : barq-assessment_backend
+
+### instance identity as served
+app-01 : app-01
+app-02 : app-01

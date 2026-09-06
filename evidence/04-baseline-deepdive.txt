@@ -1,0 +1,77 @@
+### nginx: is anything listening on 81 inside the container?
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.11:33257        0.0.0.0:*               LISTEN      -
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      1/nginx: master pro
+
+### app bind address inside app-01
+0100007F:1F90
+0B00007F:8FA1
+0100007F:AE5E
+0100007F:C604
+0100007F:B87A
+(hex 0100007F = 127.0.0.1)
+
+### app-01 identity + app-02 identity (direct, via container)
+-- app-01: 
+-- app-02: 
+
+### /ready from inside app-01 (dependency check)
+503 {"dependencies":{"postgres":"unavailable","redis":"unavailable"},"instance_id":"app-01","service":"barq-api","status":"not_ready","version":"2.0.0"}
+
+
+### app-01 dependency error lines
+{"timestamp": "2026-09-06T21:00:42.903+00:00", "level": "ERROR", "service": "barq-api", "event": "dependency_error", "dependency": "postgres", "error_type": "OperationalError", "request_id": "d1dc5e5d66d046258c7ec794f2d3a658", "instance_id": "app-01"}
+{"timestamp": "2026-09-06T21:00:42.904+00:00", "level": "ERROR", "service": "barq-api", "event": "dependency_error", "dependency": "redis", "error_type": "ConnectionError", "request_id": "d1dc5e5d66d046258c7ec794f2d3a658", "instance_id": "app-01"}
+
+### configuration_loaded line (secret leak check)
+{"timestamp": "2026-09-06T20:59:32.262+00:00", "level": "INFO", "service": "barq-api", "event": "configuration_loaded", "database_url": "postgresql://barq_app:BarqLabOnly_7qN2vK8d@postgres:5433/barq_tasks", "redis_url": "redis://redis:6380/0"}
+
+### can nginx reach postgres/redis? (isolation check)
+172.19.0.3        postgres  postgres
+172.19.0.4        redis  redis
+
+### networks per container
+template parsing error: template: :1: unexpected "\\" in range
+-- nginx: 
+template parsing error: template: :1: unexpected "\\" in range
+-- app-01: 
+template parsing error: template: :1: unexpected "\\" in range
+-- app-02: 
+template parsing error: template: :1: unexpected "\\" in range
+-- postgres: 
+template parsing error: template: :1: unexpected "\\" in range
+-- redis: 
+
+### running as which user?
+-- app-01: uid=0(root) gid=0(root) groups=0(root)
+
+### secret baked into image?
+DATABASE_URL=postgresql://barq_app:BarqLabOnly_7qN2vK8d@postgres:5433/barq_tasks
+REDIS_URL=redis://redis:6380/0
+
+### postgres data location / volume
+[
+    {
+        "Type": "volume",
+        "Name": "barq-assessment_postgres-data",
+        "Source": "/var/lib/docker/volumes/barq-assessment_postgres-data/_data",
+        "Destination": "/var/lib/postgresql/backup",
+        "Driver": "local",
+        "Mode": "rw",
+        "RW": true,
+        "Propagation": ""
+    },
+    {
+        "Type": "bind",
+        "Source": "/run/desktop/mnt/host/e/barq-devops-task/database/init.sql",
+        "Destination": "/docker-entrypoint-initdb.d/01-init.sql",
+        "Mode": "ro",
+        "RW": false,
+        "Propagation": "rprivate"
+    }
+]
+
+### postgres: is PGDATA on tmpfs?
+Filesystem                Size      Used Available Use% Mounted on
+tmpfs                     3.8G     45.9M      3.8G   1% /var/lib/postgresql/data
