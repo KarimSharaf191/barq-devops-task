@@ -1,0 +1,26 @@
+### network membership after fix
+nginx     : barq-assessment_frontend
+app-01    : barq-assessment_backend barq-assessment_frontend
+app-02    : barq-assessment_backend barq-assessment_frontend
+postgres  : barq-assessment_backend
+redis     : barq-assessment_backend
+
+### can nginx resolve or reach postgres/redis?
+getent_exit=2
+nc: bad address 'postgres'
+postgres_5432_exit=1
+nc: bad address 'redis'
+redis_6379_exit=1
+
+### can app-01 still reach them?
+postgres 5432 reachable
+redis 6379 reachable
+
+### prohibited host ports
+none listening on 5432/6379/15432/16379 (expected)
+published ports:
+  nginx: 80/tcp -> 127.0.0.1:8080 
+  postgres: 
+  redis: 
+  app-01: 
+  app-02: 
