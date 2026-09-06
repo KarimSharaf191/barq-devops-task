@@ -1,0 +1,19 @@
+### GET /health via nginx
+HTTP/1.1 200 OK
+Server: nginx/1.28.3
+Date: Sun, 06 Sep 2026 21:07:51 GMT
+Content-Type: application/json
+Content-Length: 81
+Connection: keep-alive
+X-Instance-ID: app-01
+X-Request-ID: e8aa13a51ffd0609e213b9df0402cd23
+Cache-Control: no-store
+
+{"instance_id":"app-01","service":"barq-api","status":"alive","version":"2.0.0"}
+
+### GET /ready via nginx
+http_code=503
+{"dependencies":{"postgres":"unavailable","redis":"unavailable"},"instance_id":"app-01","service":"barq-api","status":"not_ready","version":"2.0.0"}
+
+### 10x /instance
+     10 app-01
