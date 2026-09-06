@@ -386,6 +386,47 @@ Baseline commit under investigation: `8442da3` (starter v2.0.0, tag `starter-v2.
 
 ---
 
+## Entry 15 - 2026-09-06 21:19 UTC - Hardening the image surfaced a new error I had introduced
+
+- **Symptom:** after switching the app to gunicorn under `read_only: true` with
+  `USER app`, the container came up healthy and served every endpoint, but every start
+  logged:
+  ```
+  [ERROR] Control server error: [Errno 30] Read-only file system: '/home/app'
+  ```
+- **Hypothesis:** something in gunicorn wants to write inside the runtime user's home
+  directory, which does not exist (`useradd --no-create-home`) and could not be created
+  anyway on a read-only root.
+- **Command or test:** ask the installed gunicorn what it is trying to open, rather than
+  guessing from the message:
+  ```bash
+  docker run --rm --entrypoint sh barq-assessment-app:latest -c 'python -c "
+  from gunicorn.config import Config
+  for name, setting in sorted(Config().settings.items()):
+      if any(k in name for k in (\"control\",\"tmp\",\"home\",\"sock\")):
+          print(name, \"=\", repr(setting.value))"'
+  ```
+- **Actual output:**
+  ```
+  control_socket = '/home/app/.gunicorn/gunicorn.ctl'
+  control_socket_disable = False
+  ```
+- **Root cause:** gunicorn 26 opens a unix control socket under `$HOME/.gunicorn` by
+  default. This was **my** regression, introduced by the hardening commit - not a starter
+  fault. Recording it because the brief asks for the real journal, and because a
+  non-fatal `[ERROR]` on every boot is exactly the kind of noise that trains an operator
+  to ignore error logs.
+- **Failed attempt and what changed my thinking:** my first instinct was to point `HOME`
+  at the tmpfs (`ENV HOME=/tmp`). That would have worked, but it grants the process a
+  writable home purely to satisfy a feature this deployment never uses - scaling here is
+  Compose's job, not gunicorn's control socket. Turning the feature off is the smaller
+  surface, so `control_socket_disable = True` went into `app/gunicorn_conf.py` instead.
+- **Retest evidence:** `docker logs app-01 | grep -c ERROR` returns `0`, the boot log is
+  four clean gunicorn INFO lines followed by the redacted `configuration_loaded` event,
+  and all five containers stay healthy. (`evidence/12-stageF-hardening.txt`)
+
+---
+
 ## Summary of faults found in the baseline
 
 | # | File | Fault | Class |

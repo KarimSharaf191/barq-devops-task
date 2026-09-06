@@ -1,0 +1,59 @@
+### app runs as
+uid=10001(app) gid=10001(app) groups=10001(app)
+
+### server process
+
+### read-only root?
+touch: cannot touch '/srv/x': Read-only file system
+/tmp writable (tmpfs) OK
+
+### no Flask dev-server warning, gunicorn boot
+[2026-09-06 21:19:41 +0000] [7] [INFO] Starting gunicorn 26.2.0
+[2026-09-06 21:19:41 +0000] [7] [INFO] Listening at: http://0.0.0.0:8080 (7)
+[2026-09-06 21:19:41 +0000] [7] [INFO] Using worker: gthread
+[2026-09-06 21:19:41 +0000] [8] [INFO] Booting worker with pid: 8
+[2026-09-06 21:19:41 +0000] [9] [INFO] Booting worker with pid: 9
+[2026-09-06 21:19:42 +0000] [7] [ERROR] Control server error: [Errno 30] Read-only file system: '/home/app'
+
+### all endpoints through nginx
+/          200
+/health    200
+/ready     200
+/instance  200
+/records   200
+/counter   200
+POST /records 201
+/missing   404
+bad title  400
+
+### records survived the app rebuild
+{"instance_id":"app-02","records":[{"id":1,"title":"Review service readiness"},{"id":2,"title":"Document the operating procedure"},{"id":3,"title":"Persistence proof C"},{"id":4,"title":"Stage F proof"}],"service":"barq-api","version":"2.0.0"}
+
+### image user + no secret
+User=app:app Cmd=["gunicorn","--config","/srv/app/gunicorn_conf.py","app.server:create_app()"]
+app
+requirements.txt
+uid=10001(app) gid=10001(app) groups=10001(app)
+### boot log, control-socket error should be gone
+[2026-09-06 21:21:08 +0000] [7] [INFO] Starting gunicorn 26.2.0
+[2026-09-06 21:21:08 +0000] [7] [INFO] Listening at: http://0.0.0.0:8080 (7)
+[2026-09-06 21:21:08 +0000] [7] [INFO] Using worker: gthread
+[2026-09-06 21:21:08 +0000] [8] [INFO] Booting worker with pid: 8
+[2026-09-06 21:21:08 +0000] [9] [INFO] Booting worker with pid: 9
+{"timestamp": "2026-09-06T21:21:09.817+00:00", "level": "INFO", "service": "barq-api", "event": "configuration_loaded", "instance_id": "app-01", "version": "2.0.0", "database_url": "postgresql://barq_app:***@postgres:5432/barq_tasks", "redis_url": "redis://redis:6379/0"}
+{"timestamp": "2026-09-06T21:21:09.915+00:00", "level": "INFO", "service": "barq-api", "event": "configuration_loaded", "instance_id": "app-01", "version": "2.0.0", "database_url": "postgresql://barq_app:***@postgres:5432/barq_tasks", "redis_url": "redis://redis:6379/0"}
+{"timestamp": "2026-09-06T21:21:13.144+00:00", "level": "INFO", "service": "barq-api", "event": "http_request", "instance_id": "app-01", "request_id": "15ad599ea72f405d9c8dc199e1aea050", "method": "GET", "path": "/health", "status": 200, "duration_ms": 0.187}
+
+### any ERROR lines?
+0
+0 ERROR lines
+
+### still healthy + serving
+NAME       STATUS
+app-01     Up 20 seconds (healthy)
+app-02     Up 20 seconds (healthy)
+nginx      Up 5 minutes (healthy)
+postgres   Up 5 minutes (healthy)
+redis      Up 5 minutes (healthy)
+{"dependencies":{"postgres":"ready","redis":"ready"},"instance_id":"app-02","service":"barq-api","status":"ready","version":"2.0.0"}
+

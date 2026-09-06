@@ -1,6 +1,6 @@
 """App-only contract checks, not Docker/NGINX or real-dependency validation."""
 import unittest
-from app.server import create_app
+from app.server import create_app, redact_url
 
 class FakeDependencies:
     def __init__(self):
@@ -69,6 +69,23 @@ class ContractTests(unittest.TestCase):
     def test_unknown_and_head(self):
         self.assertEqual(self.client.get("/missing").status_code, 404)
         self.assertEqual(self.client.head("/health").data, b"")
+
+class RedactionTests(unittest.TestCase):
+    """Covers the log-redaction helper added when the startup log was found to
+
+    print the PostgreSQL password in clear text (troubleshooting.md entry 09).
+    """
+    def test_password_is_removed_but_the_rest_survives(self):
+        self.assertEqual(
+            redact_url("postgresql://barq_app:S3cret-p%40ss@postgres:5432/barq_tasks"),
+            "postgresql://barq_app:***@postgres:5432/barq_tasks")
+    def test_urls_without_credentials_are_untouched(self):
+        for url in ["redis://redis:6379/0", "postgresql://postgres:5432/db", "", None]:
+            self.assertEqual(redact_url(url), url)
+    def test_password_containing_an_at_sign_is_still_removed(self):
+        redacted = redact_url("postgresql://u:p@ss@postgres:5432/db")
+        self.assertNotIn("p@ss", redacted)
+        self.assertEqual(redacted, "postgresql://u:***@postgres:5432/db")
 
 if __name__ == "__main__":
     unittest.main()
