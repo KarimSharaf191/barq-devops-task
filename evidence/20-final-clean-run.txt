@@ -1,0 +1,41 @@
+===== FINAL VERIFICATION, 2026-09-06 22:01 UTC =====
+Run against a stack rebuilt from an empty state (down -v, then up --build --wait).
+
+--- CI gate: python syntax ---
+compileall OK
+--- CI gate: shell syntax ---
+bash -n backup.sh OK
+bash -n restore.sh OK
+bash -n video_challenge.sh OK
+--- CI gate: shellcheck --severity=warning (via koalaman/shellcheck:stable) ---
+shellcheck OK (no findings at warning or above)
+--- CI gate: compose config ---
+compose config OK
+--- every CI run-step parses as bash ---
+16/16 OK (checked by parsing ci.yml and running bash -n on each step)
+
+--- unit tests ---
+Ran 11 tests in 0.037s
+
+OK
+
+--- stack state ---
+NAME       STATUS                        PORTS
+app-01     Up About a minute (healthy)   8080/tcp
+app-02     Up About a minute (healthy)   8080/tcp
+nginx      Up 3 minutes (healthy)        127.0.0.1:8080->8080/tcp
+postgres   Up About a minute (healthy)   5432/tcp
+redis      Up 3 minutes (healthy)        6379/tcp
+
+--- validate.py ---
+PASS redis-persistence-enabled              appendonly yes
+------------------------------------------------------------------------------
+46 passed, 0 failed, 0 skipped in 17.8s
+validate exit=0
+
+--- logs untouched since the baseline ---
+(empty above = originals unchanged)
+
+--- challenge not yet run ---
+ls: cannot access '.assessment': No such file or directory
+.assessment does not exist: video_challenge.sh has never been run in this working copy

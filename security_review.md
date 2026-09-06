@@ -38,6 +38,16 @@ findings would be rated far higher in a real deployment, and the ratings below s
   git ls-files | grep -c 'config/app.env'                                    # 0
   docker image inspect barq-assessment-app:latest --format '{{json .Config.Env}}' | grep -c PASSWORD  # 0
   ```
+- **Deliberate remaining occurrence, declared rather than hidden:** a scan of tracked
+  files still finds the old `BarqLabOnly_...` string twice, in
+  `evidence/04-baseline-deepdive.txt`. That file *is* the proof of this finding - it is
+  the captured `docker run ... cat /srv/app.env` and the startup log showing the leak.
+  Redacting it would destroy the evidence for the fault it documents. The value is
+  synthetic lab data, it is already in the supplied baseline commit which the brief
+  requires keeping, and it was regenerated, so it opens nothing. Verify with:
+  ```bash
+  git grep -lI 'BarqLabOnly' -- . ':!logs' ':!assessment'   # evidence/ and docs only
+  ```
 
 ### 2. The same secret existed in two places and had drifted
 
