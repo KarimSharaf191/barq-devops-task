@@ -1,0 +1,28 @@
+### 1. rows in the dump we just took
+210
+
+### 2. change the data AFTER the backup: add a marker row and delete an old one
+{"instance_id":"app-02","record":{"id":211,"title":"POST-BACKUP MARKER - must disappear after restore"},"service":"barq-api","version":"2.0.0"}
+
+### rows now:
+210
+### marker present?
+1
+### id=1 present?
+0
+
+### 3. restore
+project=barq-assessment container=238fb967ef66 database=barq_tasks
+restoring ./backups/barq_tasks-20260906T213257Z.dump (3499 bytes) over the CURRENT contents
+records rows before restore: 210
+records rows after restore:  210
+OK: restore completed and the records table is readable with 210 rows
+
+### 4. verify: marker gone, id=1 back, count matches the dump
+rows: 210
+marker rows (expect 0): 0
+id=1 rows (expect 1): 1
+
+### 5. the app still works through nginx after the restore
+GET /records -> 200
+GET /ready   -> 200
