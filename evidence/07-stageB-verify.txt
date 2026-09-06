@@ -1,0 +1,34 @@
+### /ready
+{"dependencies":{"postgres":"ready","redis":"ready"},"instance_id":"app-01","service":"barq-api","status":"ready","version":"2.0.0"}
+
+http_code=200
+
+### 12x /instance through nginx
+     12 app-01
+
+### POST /records
+{"instance_id":"app-01","record":{"id":3,"title":"Stage B proof"},"service":"barq-api","version":"2.0.0"}
+
+http_code=201
+
+### GET /records
+{"instance_id":"app-01","records":[{"id":1,"title":"Review service readiness"},{"id":2,"title":"Document the operating procedure"},{"id":3,"title":"Stage B proof"}],"service":"barq-api","version":"2.0.0"}
+
+### GET /counter x3
+{"counter":1,"instance_id":"app-01","service":"barq-api","version":"2.0.0"}
+
+{"counter":2,"instance_id":"app-02","service":"barq-api","version":"2.0.0"}
+
+{"counter":3,"instance_id":"app-01","service":"barq-api","version":"2.0.0"}
+
+
+### startup log - credential redacted?
+{"timestamp": "2026-09-06T21:09:26.252+00:00", "level": "INFO", "service": "barq-api", "event": "configuration_loaded", "instance_id": "app-01", "version": "2.0.0", "database_url": "postgresql://barq_app:***@postgres:5432/barq_tasks", "redis_url": "redis://redis:6379/0"}
+
+### secret no longer in the image?
+total 16
+drwxr-xr-x 1 root root 4096 Sep  6 21:09 .
+drwxr-xr-x 1 root root 4096 Sep  6 21:10 ..
+drwxr-xr-x 2 app  app  4096 Sep  6 21:09 app
+-rwxr-xr-x 1 root root  213 Sep  6 20:57 requirements.txt
+cat: /srv/app.env: No such file or directory

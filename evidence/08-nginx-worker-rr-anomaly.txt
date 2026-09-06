@@ -1,0 +1,11 @@
+### nginx worker processes
+16
+16
+
+### reload nginx to reset per-worker round-robin cursors, then send 12 requests
+2026/09/06 21:10:36 [notice] 60#60: signal process started
+     12 X-Instance-ID: app-01
+
+### then 40 more
+     22 X-Instance-ID: app-01
+     18 X-Instance-ID: app-02

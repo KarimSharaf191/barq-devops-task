@@ -10,3 +10,7 @@ evidence/local/
 .assessment/
 backups/
 *.dump
+
+# Runtime secrets: configuration now comes from .env (see .env.example)
+config/app.env
+evidence/local/

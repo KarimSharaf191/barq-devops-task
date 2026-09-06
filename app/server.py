@@ -12,6 +12,16 @@ from werkzeug.exceptions import HTTPException
 
 VERSION = "2.0.0"
 
+def redact_url(url):
+    """Return a connection URL with the password replaced, so it is safe to log."""
+    if not url or "@" not in url:
+        return url
+    scheme, separator, rest = url.partition("://")
+    credentials, _, host = rest.rpartition("@")
+    if ":" in credentials:
+        credentials = credentials.split(":", 1)[0] + ":***"
+    return scheme + separator + credentials + "@" + host
+
 def log_event(level, event, **fields):
     print(json.dumps({"timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                       "level": level, "service": "barq-api", "event": event, **fields}), flush=True)
@@ -59,6 +69,9 @@ def create_app(config=None, dependencies=None):
     deps = dependencies or Dependencies(os.getenv("DATABASE_URL", ""),
                                         os.getenv("REDIS_URL", "redis://redis:6379/0"))
     app.extensions["dependencies"] = deps
+    log_event("INFO", "configuration_loaded", instance_id=instance, version=VERSION,
+              database_url=redact_url(os.getenv("DATABASE_URL", "")),
+              redis_url=redact_url(os.getenv("REDIS_URL", "")))
 
     def response(payload, status=200):
         return jsonify(service="barq-api", version=VERSION, instance_id=instance, **payload), status
@@ -139,7 +152,5 @@ def create_app(config=None, dependencies=None):
     return app
 
 if __name__ == "__main__":
-    log_event("INFO", "configuration_loaded", database_url=os.getenv("DATABASE_URL", ""),
-              redis_url=os.getenv("REDIS_URL", ""))
     create_app().run(host=os.getenv("APP_HOST", "0.0.0.0"),
                      port=int(os.getenv("APP_PORT", "8080")), threaded=True, debug=False)

@@ -15,3 +15,8 @@ database
 *.bundle
 .assessment
 backups
+
+.env
+.env.*
+config/
+evidence
