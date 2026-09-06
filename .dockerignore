@@ -1,22 +1,27 @@
+# Keep the build context to what the image actually needs: app/ and requirements.txt.
 .git
 .github
+.venv
+
+# Secrets must never enter the build context, let alone an image layer.
 .env
 .env.*
+config/
+
+# Not needed at runtime
 __pycache__
 **/__pycache__
 *.pyc
 logs
 docs
 tests
-assessment
 evidence
+assessment
 database
+scripts
 *.md
 *.bundle
+*.png
+*.pdf
 .assessment
 backups
-
-.env
-.env.*
-config/
-evidence

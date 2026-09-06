@@ -1,0 +1,27 @@
+===== DRY RUN of the two live video procedures =====
+Run now so a broken procedure cannot surprise me on camera.
+Both are REVERTED afterwards: the repository ships two instances on 8080,
+and both actions are performed live during the recording.
+
+--- 1. add a third instance (already applied above) ---
+     10 X-Instance-ID: app-01
+     10 X-Instance-ID: app-02
+     10 X-Instance-ID: app-03
+PASS expected-services-present              apps=['app-01', 'app-02', 'app-03'] edge=True stores=['postgres', 'redis']
+PASS all-backends-serve                     36 requests -> {'app-03': 12, 'app-01': 12, 'app-02': 12} (missing=none unexpected=none)
+50 passed, 0 failed, 0 skipped in 18.1s
+
+--- 2. change the public port 8080 -> 8090 ---
+PUBLIC_PORT=8090
+ Container nginx Starting 
+ Container nginx Started 
+docker port nginx: 8080/tcp -> 127.0.0.1:8090
+GET :8090/health -> 200
+GET :8080/health -> 000curl: (7) Failed to connect to 127.0.0.1 port 8080 after 2031 ms: Could not connect to server
+refused, as expected
+PASS edge-publishes-expected-port           expected 8090, found ['127.0.0.1:8090']
+PASS prohibited-host-port-closed[5432]      127.0.0.1:5432 must not accept connections
+PASS prohibited-host-port-closed[6379]      127.0.0.1:6379 must not accept connections
+PASS prohibited-host-port-closed[15432]     127.0.0.1:15432 must not accept connections
+PASS prohibited-host-port-closed[16379]     127.0.0.1:16379 must not accept connections
+50 passed, 0 failed, 0 skipped in 18.2s

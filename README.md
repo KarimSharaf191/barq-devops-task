@@ -255,12 +255,42 @@ docker compose -p barq-assessment up -d nginx
 curl -s http://127.0.0.1:8090/health
 python validate.py --url http://127.0.0.1:8090
 
-# add a third instance: add the app-03 service to docker-compose.yml and the
-# matching upstream line to nginx/nginx.conf, then
-docker compose -p barq-assessment up -d app-03
-docker exec nginx nginx -t && docker exec nginx nginx -s reload
-python validate.py --url http://127.0.0.1:8090       # discovers app-03 automatically
+# add a third instance
 ```
+
+Two edits, then two commands. In `docker-compose.yml`, after the `app-02` block:
+
+```yaml
+  app-03:
+    <<: *app
+    container_name: app-03
+    environment:
+      <<: *app-env
+      INSTANCE_ID: "app-03"
+```
+
+In `nginx/nginx.conf`, inside `upstream application_pool`:
+
+```nginx
+        server app-03:8080 max_fails=3 fail_timeout=5s;
+```
+
+Then:
+
+```bash
+docker compose -p barq-assessment up -d app-03          # nginx is NOT restarted
+docker exec nginx nginx -t && docker exec nginx nginx -s reload
+for i in $(seq 30); do
+  curl -s -o /dev/null -D - http://127.0.0.1:8090/instance | grep -i '^X-Instance-ID'
+done | sort | uniq -c                                    # ~10 each of app-01/02/03
+python validate.py --url http://127.0.0.1:8090           # discovers app-03 automatically
+```
+
+`nginx -t` before `-s reload` is deliberate: a reload with a broken config leaves the old
+workers running and the error only in the log, so testing first is the difference between
+a caught typo and a silent non-change. The upstream `zone` directive means the new peer
+enters the shared round-robin state immediately rather than per worker
+([`decisions.md`](decisions.md) 5).
 
 ---
 
