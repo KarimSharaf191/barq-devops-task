@@ -1,0 +1,29 @@
+### Why did POST survive? nginx only refuses to retry a request it has ALREADY SENT.
+### docker stop => connect() refused => nothing was sent => nginx retries even POST.
+
+### Harsher mode: docker pause (socket accepts, never replies) - this is one of the
+### three faults scripts/video_challenge.py can inject, so knowing the signature matters.
+app-01 state: paused paused=true
+--- 12 GETs with a paused backend (proxy_read_timeout is 5s) ---
+200/0.004317s 504/4.877817s 200/0.004432s 504/4.894021s 200/0.004663s 504/4.895137s 200/0.005978s 200/0.004714s 200/0.004517s 200/0.004209s 200/0.004346s 200/0.004011s 
+elapsed: 15s
+--- nginx error log ---
+{"timestamp":"2026-09-06T21:30:23+00:00","service":"edge","request_id":"38b5a206ed7d8d5970f70a585fa32980","method":"GET","path":"/instance","status":200,"upstream":"172.19.0.3:8080","upstream_status":"200","request_time":"0.002","client":"172.19.0.1"}
+{"timestamp":"2026-09-06T21:30:23+00:00","service":"edge","request_id":"69d8602f29a62fa1f4f09dd16fcb4b1f","method":"GET","path":"/instance","status":200,"upstream":"172.19.0.3:8080","upstream_status":"200","request_time":"0.001","client":"172.19.0.1"}
+{"timestamp":"2026-09-06T21:30:23+00:00","service":"edge","request_id":"c89afa0f5f44eee1d9833dcb9c0c0396","method":"GET","path":"/instance","status":200,"upstream":"172.19.0.3:8080","upstream_status":"200","request_time":"0.001","client":"172.19.0.1"}
+{"timestamp":"2026-09-06T21:30:23+00:00","service":"edge","request_id":"4d9a75655cdb7c42ae550738b8fe9a2a","method":"GET","path":"/instance","status":200,"upstream":"172.19.0.3:8080","upstream_status":"200","request_time":"0.001","client":"172.19.0.1"}
+--- after unpause ---
+NAME       STATUS
+app-01     Up About a minute (healthy)
+app-02     Up 3 minutes (healthy)
+nginx      Up 14 minutes (healthy)
+postgres   Up 14 minutes (healthy)
+redis      Up 14 minutes (healthy)
+      4 X-Instance-ID: app-01
+      4 X-Instance-ID: app-02
+### re-measure with the paused backend
+--- 12 GETs ---
+200/4.871142s 200/0.032766s 200/4.865554s 200/0.020933s 200/4.902190s 200/0.004778s 200/0.029322s 200/0.012780s 200/0.004778s 200/0.004753s 200/0.004785s 200/0.025564s 
+--- restored ---
+      4 X-Instance-ID: app-01
+      4 X-Instance-ID: app-02

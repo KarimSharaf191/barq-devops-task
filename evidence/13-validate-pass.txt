@@ -1,0 +1,50 @@
+project=barq-assessment  url=http://127.0.0.1:8080  bounded-wait=90.0s
+------------------------------------------------------------------------------
+PASS compose-project-visible                5 services: app-01, app-02, nginx, postgres, redis
+PASS expected-services-present              apps=['app-01', 'app-02'] edge=True stores=['postgres', 'redis']
+PASS containers-healthy                     after 0s: {'app-01': 'healthy', 'app-02': 'healthy', 'nginx': 'healthy', 'postgres': 'healthy', 'redis': 'healthy'}
+PASS public-http-reachable                  GET http://127.0.0.1:8080/health -> (200, {'instance_id': 'app-01', 'service': 'barq-api', 'status': 'alive', 'version': '2.0.0'}) after 0s
+PASS endpoint-root                          200 {'instance_id': 'app-02', 'message': 'Welcome to BARQ Systems', 'service': 'barq-api', 'version': '2.0.0'}
+PASS endpoint-health                        200 {'instance_id': 'app-01', 'service': 'barq-api', 'status': 'alive', 'version': '2.0.0'}
+PASS endpoint-ready                         200 {'dependencies': {'postgres': 'ready', 'redis': 'ready'}, 'instance_id': 'app-02', 'service': 'barq-api', 'status': 'ready', 'version': '2.0.0'} after 0s
+PASS dependency-postgres-ready              {'postgres': 'ready', 'redis': 'ready'}
+PASS dependency-redis-ready                 {'postgres': 'ready', 'redis': 'ready'}
+PASS endpoint-instance                      200 header=app-01 body=app-01
+PASS request-id-header                      X-Request-ID=d36aadfc5dccd34c39f53fd2cc112183
+PASS unknown-route-404                      404 {'error': 'not_found', 'instance_id': 'app-02', 'service': 'barq-api', 'version': '2.0.0'}
+PASS all-backends-serve                     24 requests -> {'app-01': 12, 'app-02': 12} (missing=none unexpected=none)
+PASS records-create-201                     201 {'id': 5, 'title': 'validate.py 2026-09-06T21:25:22Z'}
+PASS records-list-contains-new-row          5 rows listed, new row present=True
+PASS records-reject-invalid-titles          status codes for invalid payloads: [400, 400, 400, 400]
+PASS counter-increments                     9 -> 10
+PASS isolation-edge-frontend-only           nginx networks: ['barq-assessment_frontend']
+PASS isolation-app-both-networks[app-01]    ['barq-assessment_backend', 'barq-assessment_frontend']
+PASS isolation-app-both-networks[app-02]    ['barq-assessment_backend', 'barq-assessment_frontend']
+PASS isolation-store-backend-only[postgres] ['barq-assessment_backend']
+PASS isolation-store-backend-only[redis]    ['barq-assessment_backend']
+PASS isolation-edge-cannot-resolve[postgres] nginx getent postgres exit=2
+PASS isolation-edge-cannot-resolve[redis]   nginx getent redis exit=2
+PASS only-edge-publishes-a-host-port        published: {'nginx': ['127.0.0.1:8080']}
+PASS edge-publishes-expected-port           expected 8080, found ['127.0.0.1:8080']
+PASS prohibited-host-port-closed[5432]      127.0.0.1:5432 must not accept connections
+PASS prohibited-host-port-closed[6379]      127.0.0.1:6379 must not accept connections
+PASS prohibited-host-port-closed[15432]     127.0.0.1:15432 must not accept connections
+PASS prohibited-host-port-closed[16379]     127.0.0.1:16379 must not accept connections
+PASS runs-as-non-root[app-01]               uid=10001
+PASS runs-as-non-root[app-02]               uid=10001
+PASS runs-as-non-root[nginx]                uid=101
+PASS restart-policy-set[app-01]             restart=unless-stopped
+PASS memory-limit-set[app-01]               268435456 bytes
+PASS restart-policy-set[app-02]             restart=unless-stopped
+PASS memory-limit-set[app-02]               268435456 bytes
+PASS restart-policy-set[nginx]              restart=unless-stopped
+PASS memory-limit-set[nginx]                134217728 bytes
+PASS restart-policy-set[postgres]           restart=unless-stopped
+PASS memory-limit-set[postgres]             536870912 bytes
+PASS restart-policy-set[redis]              restart=unless-stopped
+PASS memory-limit-set[redis]                201326592 bytes
+PASS postgres-pgdata-on-named-volume        [('barq-assessment_postgres-data', '/var/lib/postgresql/data')]
+PASS postgres-pgdata-not-tmpfs              tmpfs: none
+PASS redis-persistence-enabled              appendonly yes
+------------------------------------------------------------------------------
+46 passed, 0 failed, 0 skipped in 17.8s

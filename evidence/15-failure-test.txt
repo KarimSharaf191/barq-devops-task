@@ -1,0 +1,18 @@
+project=barq-assessment  url=http://127.0.0.1:8080  victim=app-01 (app-01)  survivors=['app-02']  phase=10.0s
+==============================================================================
+1 baseline             GET  516/516  ok (100.00% available)  POST 73/73 ok  p50   16.0ms  p95   32.0ms
+                       served by {'app-02': 294, 'app-01': 295}  statuses {'200': 516, '201': 73}
+
+--> docker stop app-01
+    health now: unhealthy
+2 app-01 stopped       GET  382/382  ok (100.00% available)  POST 54/54 ok  p50   16.0ms  p95   47.0ms
+                       served by {'app-02': 436}  statuses {'200': 382, '201': 54}
+
+--> docker start app-01  (always runs, even on error or Ctrl+C)
+    health now: healthy (healthy within timeout: True)
+3 recovered            GET  527/527  ok (100.00% available)  POST 75/75 ok  p50   16.0ms  p95   32.0ms
+                       served by {'app-02': 302, 'app-01': 300}  statuses {'200': 527, '201': 75}
+==============================================================================
+GET availability   baseline 100.00%   outage 100.00%   recovered 100.00%
+POST errors        baseline 0   outage 0   recovered 0
+RESULT: PASS

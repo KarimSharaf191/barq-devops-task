@@ -1,0 +1,18 @@
+### negative test 1: stop app-02
+FAIL containers-healthy                     after 14s: {'app-01': 'healthy', 'app-02': 'unhealthy', 'nginx': 'healthy', 'postgres': 'healthy', 'redis': 'healthy'}
+SKIP public-endpoint-checks                 containers never became healthy
+FAIL runs-as-non-root[app-02]               uid=unknown
+30 passed, 2 failed, 1 skipped in 30.9s
+exit=1
+validate exit code = 1
+
+### negative test 2: attach nginx to the backend network (isolation break)
+FAIL isolation-edge-frontend-only           nginx networks: ['barq-assessment_backend', 'barq-assessment_frontend']
+FAIL isolation-edge-cannot-resolve[postgres] nginx getent postgres exit=0
+FAIL isolation-edge-cannot-resolve[redis]   nginx getent redis exit=0
+43 passed, 3 failed, 0 skipped in 10.6s
+validate exit code = 1
+
+### restored
+------------------------------------------------------------------------------
+46 passed, 0 failed, 0 skipped in 17.5s

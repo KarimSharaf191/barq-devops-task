@@ -381,8 +381,61 @@ Baseline commit under investigation: `8442da3` (starter v2.0.0, tag `starter-v2.
 - **Fix:** `proxy_next_upstream error timeout http_502 http_503 http_504` with
   `proxy_next_upstream_tries 2`, and `max_fails=3 fail_timeout=5s` on each peer.
 - **Remaining uncertainty / deliberate limit:** `non_idempotent` is *not* enabled, so a
-  `POST /records` that lands on a dying backend fails rather than risking a duplicate
-  insert. This is a chosen trade-off, not an oversight - see `decisions.md`.
+  `POST /records` is never retried once it has been *sent* to a backend. See Entry 16 -
+  measuring this corrected what I expected it to mean.
+
+---
+
+## Entry 16 - 2026-09-06 21:27 UTC - POST survived the outage, which I had predicted it would not
+
+- **Symptom:** `failure_test.py` reported **100.00%** availability during the outage for
+  GET *and* 54/54 successful POSTs. I had written in Entry 14 that POST would fail fast,
+  because `proxy_next_upstream` deliberately omits `non_idempotent`.
+- **Command or test:** `python failure_test.py` (`evidence/15-failure-test.txt`).
+- **Root cause of my wrong prediction:** nginx refuses to retry a non-idempotent request
+  only once *the request has already been sent* to the upstream. `docker stop` closes the
+  listening socket, so the next attempt fails at `connect()` - nothing was ever sent, and
+  nginx is free to retry a POST safely.
+- **What this changes:** the safety property is better than I described. Writes are
+  retried exactly when nginx *knows* nothing was delivered, and are not retried when the
+  request may have been processed but the reply was lost. Entry 14 and `decisions.md`
+  now state it that way. I would not have found the distinction without measuring it.
+
+---
+
+## Entry 17 - 2026-09-06 21:30 UTC - A paused backend returned 504s: my own retry budget was too small
+
+- **Symptom:** `docker stop` gave a clean 100% availability, so I tested the harsher
+  failure mode - `docker pause`, where the socket still accepts but nothing ever replies.
+  This is also one of the three faults `scripts/video_challenge.py` can inject, so the
+  signature was worth knowing before the recording. 12 client requests produced:
+  ```
+  200/0.004s 504/4.877s 200/0.004s 504/4.894s 200/0.004s 504/4.895s 200/0.005s 200/0.004s ...
+  ```
+  Three client-visible 504s before traffic settled.
+- **Hypothesis 1 (wrong):** `proxy_next_upstream` was missing the timeout condition.
+  Rejected by reading the config back - `timeout` was already listed.
+- **Hypothesis 2:** the retry never happened because the *budget* for retries was already
+  spent. `proxy_read_timeout` was 5s and `proxy_next_upstream_timeout` was also 5s, so by
+  the time the first peer timed out at ~4.9s there was no time left to try the second.
+  The three 504s at ~4.88s each match `proxy_read_timeout`, not a connect failure.
+- **Root cause:** my own tuning, introduced in the availability commit. Two timeouts that
+  looked independently reasonable were mutually exclusive.
+- **Fix:** `proxy_next_upstream_timeout 12s`, comfortably above `proxy_read_timeout 5s`,
+  so one full read timeout plus a retry fits inside the budget. `proxy_read_timeout` was
+  left at 5s deliberately: the app's own dependency checks can take up to ~4s when
+  PostgreSQL is unreachable, and a shorter proxy timeout would replace the app's
+  informative 503 with an opaque 504.
+- **Retest evidence:** same 12 requests against a paused backend after the change:
+  ```
+  200/4.871s 200/0.033s 200/4.866s 200/0.021s 200/4.902s 200/0.005s 200/0.029s ...
+  ```
+  Zero 504s. Three requests are slow while `max_fails=3` is still counting, then the peer
+  is marked down for `fail_timeout` and everything is fast again.
+  (`evidence/16-paused-backend-behaviour.txt`)
+- **Remaining uncertainty:** three slow requests are still user-visible. Eliminating them
+  needs active health checking, which open-source nginx does not provide; the production
+  answer is a load balancer with active probes, noted in `security_review.md`.
 
 ---
 
