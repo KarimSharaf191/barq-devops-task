@@ -1,0 +1,33 @@
+### nginx runs as
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+USER     COMMAND
+nginx    nginx: master process nginx -g daemon off;
+nginx    nginx: worker process
+nginx    nginx: worker process
+
+### root filesystem read-only?
+touch: /etc/nginx/x: Read-only file system
+
+### round-robin fairness right after a reload (was 12/0 before the zone directive)
+2026/09/06 21:16:55 [notice] 108#108: signal process started
+      6 X-Instance-ID: app-01
+      6 X-Instance-ID: app-02
+
+### 40 more
+     20 X-Instance-ID: app-01
+     20 X-Instance-ID: app-02
+
+### failover: stop app-01, send 20 GETs
+200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 200 
+served by:
+      6 X-Instance-ID: app-02
+
+### restart app-01 and confirm it serves again
+NAME       STATUS
+app-01     Up 19 seconds (healthy)
+app-02     Up About a minute (healthy)
+nginx      Up About a minute (healthy)
+postgres   Up About a minute (healthy)
+redis      Up About a minute (healthy)
+     10 X-Instance-ID: app-01
+     10 X-Instance-ID: app-02

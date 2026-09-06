@@ -299,6 +299,93 @@ Baseline commit under investigation: `8442da3` (starter v2.0.0, tag `starter-v2.
 
 ---
 
+## Entry 12 - 2026-09-06 21:07-21:12 UTC - Retest after the connectivity, config, persistence and isolation fixes
+
+- **Retest evidence** for entries 02-10, taken after each fix commit:
+
+  | Fault | Before | After |
+  |---|---|---|
+  | public port (02) | `curl: (52) Empty reply from server` | `HTTP/1.1 200 OK` on `/health` |
+  | healthcheck (03) | `Up (unhealthy)` forever | `Up (healthy)` for both apps |
+  | loopback bind (04) | `0100007F:1F90` | reachable from nginx |
+  | upstream port (05) | `app-01:8081` | both peers serve |
+  | dependency URLs (06) | `/ready` 503, both `unavailable` | `/ready` 200, both `ready` |
+  | identity (07) | both answer `app-01` | 10 / 10 split across 20 requests |
+  | persistence (08) | PGDATA on tmpfs | record `id=3` survives recreation |
+  | secrets (09/12/13) | `/srv/app.env` in image, password in log | file absent, log shows `barq_app:***@` |
+  | isolation (10/14) | nginx resolves postgres and redis | `getent` exit 2, `nc: bad address` |
+
+  Raw captures: `evidence/06-stageA-verify.txt`, `evidence/07-stageB-verify.txt`,
+  `evidence/09-stageC-persistence.txt`, `evidence/10-stageD-isolation.txt`.
+- **Related commits:** `9f9a8fe`, `43495c3`, `a1757e4`, `e59319c`.
+
+---
+
+## Entry 13 - 2026-09-06 21:09 UTC - Load balancing looked broken, but was a per-worker round-robin cursor
+
+- **Symptom:** immediately after fixing the identity bug I sent 12 requests to
+  `/instance` through nginx and every single one was answered by `app-01`. A second
+  run of 20 requests came back a perfect 10 / 10. Same config, opposite result.
+- **Hypothesis 1 (wrong):** `app-02` was still starting, or nginx had marked it down.
+  Rejected: `docker compose ps` showed `app-02` healthy throughout, `max_fails=0` was
+  set at the time so nginx could not mark any peer down, and `/counter` in the *same*
+  capture alternated `app-01` / `app-02`.
+- **Hypothesis 2:** nginx round-robin state is per worker process, not per server.
+  Each worker starts its cursor on the first peer, so while workers are still cold the
+  first request each one handles goes to `app-01`.
+- **Command or test:** count the workers and force them all to be cold again:
+  ```bash
+  docker exec nginx sh -c "ps -o pid,args | grep -c '[n]ginx: worker'"   # 16
+  docker exec nginx nginx -s reload && sleep 2
+  for i in $(seq 12); do curl -sS -o /dev/null -D - http://127.0.0.1:8080/instance \
+    | grep -i '^X-Instance-ID'; done | sort | uniq -c
+  ```
+- **Actual output:** deterministic reproduction - `12 X-Instance-ID: app-01`, then a
+  further 40 requests split 22 / 18 as the workers warmed up.
+  (`evidence/08-nginx-worker-rr-anomaly.txt`)
+- **Root cause:** `worker_processes auto` gives 16 workers on this host, and with no
+  `zone` directive each keeps its own private round-robin cursor in its own address
+  space. This is not a fault the starter planted - it is a real property of nginx that
+  the starter's config never accounted for, and it would have made the video's
+  "prove both backends serve" demonstration look broken at random.
+- **Fix:** add `zone application_pool 64k;` to the upstream block so round-robin state
+  lives in shared memory and is consistent across all workers.
+- **Retest evidence:** same reload-then-12-requests procedure after the fix:
+  ```
+  6 X-Instance-ID: app-01
+  6 X-Instance-ID: app-02
+  ```
+  and 20 / 20 over the next 40 requests. (`evidence/11-stageE-availability.txt`)
+- **Remaining uncertainty:** the split is only exactly even because every request is
+  cheap and uniform. Under mixed workloads round-robin distributes *requests*, not
+  load; `least_conn` would be the next step if request cost ever varies.
+
+---
+
+## Entry 14 - 2026-09-06 21:17 UTC - Failover and recovery
+
+- **Symptom under test:** with `proxy_next_upstream off` (the starter value), stopping
+  one backend returns the failure to the client instead of retrying the healthy peer.
+- **Command or test:**
+  ```bash
+  docker stop app-01
+  for i in $(seq 20); do curl -sS -m 6 -o /dev/null -w "%{http_code} " \
+    http://127.0.0.1:8080/instance; done
+  docker start app-01 && sleep 18
+  ```
+- **Actual output:** 20 consecutive `200`s while `app-01` was stopped, every one served
+  by `app-02`; after restart, 10 / 10 across 20 requests.
+  (`evidence/11-stageE-availability.txt`)
+- **Root cause of the original behaviour:** `proxy_next_upstream off` plus
+  `max_fails=0`, which also disabled passive health checking.
+- **Fix:** `proxy_next_upstream error timeout http_502 http_503 http_504` with
+  `proxy_next_upstream_tries 2`, and `max_fails=3 fail_timeout=5s` on each peer.
+- **Remaining uncertainty / deliberate limit:** `non_idempotent` is *not* enabled, so a
+  `POST /records` that lands on a dying backend fails rather than risking a duplicate
+  insert. This is a chosen trade-off, not an oversight - see `decisions.md`.
+
+---
+
 ## Summary of faults found in the baseline
 
 | # | File | Fault | Class |
