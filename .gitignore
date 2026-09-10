@@ -5,7 +5,7 @@ __pycache__/
 Thumbs.db
 
 # Secrets: all runtime configuration comes from .env, which is never committed.
-# .env.example ships a placeholder instead. config/app.env was deleted in 43495c3
+# .env.example ships a placeholder instead. config/app.env was deleted in ea1d99b
 # because it held a real credential; this entry stops it coming back.
 .env
 .env.*

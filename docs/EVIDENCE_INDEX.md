@@ -10,7 +10,7 @@
 | Continuous 12-18 minute video URL | `__________________` |
 | Challenge receipt ID | `__________________` (from `.assessment/challenge.json`, created during the recording) |
 | Starting video commit | `__________________` |
-| Later documentation-only commits | `__________________` |
+| Later documentation-only commits | All explained in [Later commits, and why they exist](#later-commits-and-why-they-exist); none changes application, Compose or NGINX behaviour |
 
 Placeholders above are filled in once the repository is pushed and the video is recorded.
 Everything below is already in the repository and verifiable now.
@@ -26,19 +26,44 @@ names the faults it closes and the evidence file proving the retest.
 |---|---|---|
 | `02fe9c8` | baseline | Initial assessment starter v1.0.0 (supplied) |
 | `9b08964` | baseline | Release assessment starter v2.0.0 (supplied, tag `starter-v2.0.0`) |
-| `69cfc02`, `fba6cc4`, `8442da3` | baseline | Supplied release commits, kept intact |
-| `9dd0850` | investigate | Baseline failure evidence, 15 faults, no fixes yet |
-| `9f9a8fe` | fix | Connectivity: nginx port, `APP_HOST`, upstream port, health path |
-| `43495c3` | fix | Dependency URLs, password drift, secrets out of Git and the image, identity |
-| `a1757e4` | fix | Persistence: PGDATA on the named volume, Redis AOF |
-| `e59319c` | fix | Network isolation: nginx off `backend`, datastore ports removed |
-| `566601c` | fix | Availability: failover, shared LB zone, restart policy, resource limits |
-| `b828e52` | fix | Image: non-root, gunicorn, stdlib healthcheck, read-only root |
-| `90331a9` | feat | `validate.py`, `failure_test.py`, and the retry-budget fix they exposed |
-| `da49e44` | feat | Verified `backup.sh` / `restore.sh` |
-| `7e8f5b4` | ci | Build, start, validate and prove pipeline, plus a Trivy scan job |
-| `c383369` | analysis | `scripts/analyze_logs.py` and all ten log answers |
-| _(docs)_ | docs | README, decisions, security review, AI disclosure, diagram, this index |
+| `349af2b`, `791f6b2`, `aa49fb3` | baseline | Supplied release commits, kept intact |
+| `322ab4c` | investigate | Baseline failure evidence, 15 faults, no fixes yet |
+| `e3ea094` | fix | Connectivity: nginx port, `APP_HOST`, upstream port, health path |
+| `ea1d99b` | fix | Dependency URLs, password drift, secrets out of Git and the image, identity |
+| `432f4e2` | fix | Persistence: PGDATA on the named volume, Redis AOF |
+| `fb9012a` | fix | Network isolation: nginx off `backend`, datastore ports removed |
+| `add6a06` | fix | Availability: failover, shared LB zone, restart policy, resource limits |
+| `2eeca70` | fix | Image: non-root, gunicorn, stdlib healthcheck, read-only root |
+| `df42b54` | feat | `validate.py`, `failure_test.py`, and the retry-budget fix they exposed |
+| `2a87ccf` | feat | Verified `backup.sh` / `restore.sh` |
+| `966dd6d` | ci | Build, start, validate and prove pipeline, plus a Trivy scan job |
+| `d1185ca` | analysis | `scripts/analyze_logs.py` and all ten log answers |
+| `6ce371f` | docs | README, decisions, security review, AI disclosure, diagram, this index |
+| `800745a` | verify | Clean-state re-run of every gate the CI pipeline enforces |
+| `494b89a` | chore | Ignore rules tightened; the two live video procedures rehearsed, then reverted |
+| `8853d85` | docs | AI disclosure scope corrected |
+| `9cb5c5b` | ci | Trivy action pinned to a tag that actually exists |
+| `b7d3102` | ci | Trivy action pinned by commit SHA after an upstream tag was deleted |
+| `a897dd6` | docs | Evidence file manifest, so no capture reads as missing |
+
+### Later commits, and why they exist
+
+The brief asks that any commit after the implementation work be explained. Every one of
+them is documentation, verification or pipeline repair - no commit after `d1185ca`
+changes application, Compose or NGINX behaviour, which `git diff` across that range will
+confirm.
+
+| Commit | Why it happened |
+|---|---|
+| `6ce371f` | The documentation set itself: README, decisions, security review, AI disclosure, generated diagram and this index. |
+| `800745a` | A full clean-state verification run - stack torn down with `down -v` and every CI gate re-run locally - captured in `evidence/20`. |
+| `494b89a` | Ignore rules tightened, and the two procedures performed live in the video rehearsed once and **reverted**, so both are genuinely performed on camera (`evidence/21`). |
+| `8853d85` | The AI disclosure overstated where AI was used. Corrected rather than left standing, because an inaccurate disclosure is worse than a broad one. |
+| `9cb5c5b`, `b7d3102` | The Trivy scan job could not start: it referenced `trivy-action@0.28.0`, which is not a real tag, and the `v0.28.0` release pins a `setup-trivy` tag that upstream has since deleted. Now pinned by commit SHA, which cannot be moved or deleted. **This was only discoverable after the first push** - a `uses:` reference is resolved by the runner, so no amount of local testing catches it. The gating job passed throughout; the scan is `continue-on-error` by design. |
+| `a897dd6` | An evidence manifest covering all 22 capture files, added because a zero-byte capture and one uncited file could each have been read as missing evidence. |
+
+Commits made during the recording are listed in the Submission table above, with their
+video timestamps.
 
 ---
 
@@ -48,62 +73,62 @@ names the faults it closes and the evidence file proving the retest.
 
 | Requirement | File / output | Commit | Video |
 |---|---|---|---|
-| Baseline kept, committed before technical changes | tag `starter-v2.0.0`; `git diff starter-v2.0.0 -- logs/` is empty | `8442da3`, `9dd0850` | `__:__` |
+| Baseline kept, committed before technical changes | tag `starter-v2.0.0`; `git diff starter-v2.0.0 -- logs/` is empty | `aa49fb3`, `322ab4c` | `__:__` |
 | Progressive commits: investigate -> fix -> verify | `git log --oneline` (table above) | all | `__:__` |
-| Symptoms, hypotheses, commands, results, failed attempts | [`troubleshooting.md`](../troubleshooting.md) - 17 entries | `9dd0850`+ | `__:__` |
+| Symptoms, hypotheses, commands, results, failed attempts | [`troubleshooting.md`](../troubleshooting.md) - 17 entries | `322ab4c`+ | `__:__` |
 | Root cause, fix, retest evidence per fault | `troubleshooting.md` summary table + entries 12-17 | each fix commit | `__:__` |
-| Four wrong hypotheses recorded honestly | `troubleshooting.md` 01, 10, 16, 17 | `9dd0850`, `90331a9` | `__:__` |
-| Two regressions I introduced, documented as mine | `troubleshooting.md` 15, 17 | `b828e52`, `90331a9` | `__:__` |
-| All three logs analysed, originals unchanged | [`log_analysis.md`](../log_analysis.md), [`scripts/analyze_logs.py`](../scripts/analyze_logs.py), [`evidence/18`](../evidence/18-log-analysis-output.txt) | `c383369` | `__:__` |
-| Every log-template question answered | `log_analysis.md` sections 1-10 | `c383369` | `__:__` |
-| Counts, timeline, correlation, double-count avoidance | `log_analysis.md` 2, 4, 6, 7, 8 | `c383369` | `__:__` |
+| Four wrong hypotheses recorded honestly | `troubleshooting.md` 01, 10, 16, 17 | `322ab4c`, `df42b54` | `__:__` |
+| Two regressions I introduced, documented as mine | `troubleshooting.md` 15, 17 | `2eeca70`, `df42b54` | `__:__` |
+| All three logs analysed, originals unchanged | [`log_analysis.md`](../log_analysis.md), [`scripts/analyze_logs.py`](../scripts/analyze_logs.py), [`evidence/18`](../evidence/18-log-analysis-output.txt) | `d1185ca` | `__:__` |
+| Every log-template question answered | `log_analysis.md` sections 1-10 | `d1185ca` | `__:__` |
+| Counts, timeline, correlation, double-count avoidance | `log_analysis.md` 2, 4, 6, 7, 8 | `d1185ca` | `__:__` |
 
 ### Part 2 - Docker, networking and NGINX
 
 | Requirement | File / output | Commit | Video |
 |---|---|---|---|
-| Two Flask instances behind NGINX, working PostgreSQL and Redis | [`docker-compose.yml`](../docker-compose.yml), [`evidence/13`](../evidence/13-validate-pass.txt) | `9f9a8fe`, `43495c3` | `__:__` |
-| Only NGINX published; app/PostgreSQL/Redis not published | `validate.py` `only-edge-publishes-a-host-port`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
-| NGINX + apps on frontend; apps + datastores on backend | `validate.py` `isolation-*`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
-| NGINX blocked from PostgreSQL/Redis | `getent` exit 2 inside nginx, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `e59319c` | `__:__` |
-| Service names, not container IPs | `nginx/nginx.conf` upstream, `DATABASE_URL`/`REDIS_URL` | `43495c3` | `__:__` |
+| Two Flask instances behind NGINX, working PostgreSQL and Redis | [`docker-compose.yml`](../docker-compose.yml), [`evidence/13`](../evidence/13-validate-pass.txt) | `e3ea094`, `ea1d99b` | `__:__` |
+| Only NGINX published; app/PostgreSQL/Redis not published | `validate.py` `only-edge-publishes-a-host-port`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `fb9012a` | `__:__` |
+| NGINX + apps on frontend; apps + datastores on backend | `validate.py` `isolation-*`, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `fb9012a` | `__:__` |
+| NGINX blocked from PostgreSQL/Redis | `getent` exit 2 inside nginx, [`evidence/10`](../evidence/10-stageD-isolation.txt) | `fb9012a` | `__:__` |
+| Service names, not container IPs | `nginx/nginx.conf` upstream, `DATABASE_URL`/`REDIS_URL` | `ea1d99b` | `__:__` |
 | Container names app-01, app-02, nginx, postgres, redis | `docker compose ps` | starter, kept | `__:__` |
 | Network names ending frontend / backend | `barq-assessment_frontend`, `_backend` | starter, kept | `__:__` |
-| Distinct app identities | [`evidence/07`](../evidence/07-stageB-verify.txt), 10/10 split | `43495c3` | `__:__` |
-| Named PostgreSQL volume; Redis persistence | `validate.py` `postgres-pgdata-on-named-volume`, `redis-persistence-enabled` | `a1757e4` | `__:__` |
-| Env vars, health/readiness, restart policies, resource limits | `docker-compose.yml`, `validate.py` `restart-policy-set` / `memory-limit-set` | `566601c` | `__:__` |
-| Non-root, minimal dependencies | `uid=10001(app)`, `uid=101(nginx)`, [`evidence/12`](../evidence/12-stageF-hardening.txt) | `b828e52` | `__:__` |
-| Health-check tools installed in the image, explained | [`app/healthcheck.py`](../app/healthcheck.py), busybox `wget` for nginx, [`decisions.md`](../decisions.md) 3 | `b828e52` | `__:__` |
-| Base-image choice explained | [`decisions.md`](../decisions.md) 1 | `b828e52` | `__:__` |
-| Secrets out of images, code and Compose; safe `.env.example` | [`.env.example`](../.env.example), [`evidence/07`](../evidence/07-stageB-verify.txt) | `43495c3` | `__:__` |
-| All required endpoints, real DB/cache operations | [`evidence/12`](../evidence/12-stageF-hardening.txt), `validate.py` `endpoint-*` | `b828e52` | `__:__` |
+| Distinct app identities | [`evidence/07`](../evidence/07-stageB-verify.txt), 10/10 split | `ea1d99b` | `__:__` |
+| Named PostgreSQL volume; Redis persistence | `validate.py` `postgres-pgdata-on-named-volume`, `redis-persistence-enabled` | `432f4e2` | `__:__` |
+| Env vars, health/readiness, restart policies, resource limits | `docker-compose.yml`, `validate.py` `restart-policy-set` / `memory-limit-set` | `add6a06` | `__:__` |
+| Non-root, minimal dependencies | `uid=10001(app)`, `uid=101(nginx)`, [`evidence/12`](../evidence/12-stageF-hardening.txt) | `2eeca70` | `__:__` |
+| Health-check tools installed in the image, explained | [`app/healthcheck.py`](../app/healthcheck.py), busybox `wget` for nginx, [`decisions.md`](../decisions.md) 3 | `2eeca70` | `__:__` |
+| Base-image choice explained | [`decisions.md`](../decisions.md) 1 | `2eeca70` | `__:__` |
+| Secrets out of images, code and Compose; safe `.env.example` | [`.env.example`](../.env.example), [`evidence/07`](../evidence/07-stageB-verify.txt) | `ea1d99b` | `__:__` |
+| All required endpoints, real DB/cache operations | [`evidence/12`](../evidence/12-stageF-hardening.txt), `validate.py` `endpoint-*` | `2eeca70` | `__:__` |
 
 ### Part 3 - Validation, persistence and CI
 
 | Requirement | File / output | Commit | Video |
 |---|---|---|---|
-| `validate.py` with bounded waits, PASS/FAIL, non-zero exit | [`validate.py`](../validate.py), [`evidence/13`](../evidence/13-validate-pass.txt) - 46/46, exit 0 | `90331a9` | `__:__` |
-| Validation actually fails when it should | [`evidence/14`](../evidence/14-validate-negative-tests.txt) - exit 1 twice | `90331a9` | `__:__` |
-| Checks isolation and prohibited host ports | `validate.py` `isolation-*`, `prohibited-host-port-closed[*]` | `90331a9` | `__:__` |
-| `failure_test.py`: stop, measure, restore, verify recovery | [`failure_test.py`](../failure_test.py), [`evidence/15`](../evidence/15-failure-test.txt) | `90331a9` | `__:__` |
-| Traffic and errors measured during failure | [`evidence/15`](../evidence/15-failure-test.txt) - 100.00% availability, per-phase p50/p95 | `90331a9` | `__:__` |
-| Recovered backend proven to serve again | [`evidence/15`](../evidence/15-failure-test.txt) phase 3 | `90331a9` | `__:__` |
-| Harsher failure mode measured (paused backend) | [`evidence/16`](../evidence/16-paused-backend-behaviour.txt) - 3x504 before, 0 after | `90331a9` | `__:__` |
-| `backup.sh` / `restore.sh`, restore proven | [`evidence/17`](../evidence/17-backup-restore-proof.txt) | `da49e44` | `__:__` |
-| Record survives app + PostgreSQL container recreation | [`evidence/09`](../evidence/09-stageC-persistence.txt) | `a1757e4` | `__:__` |
+| `validate.py` with bounded waits, PASS/FAIL, non-zero exit | [`validate.py`](../validate.py), [`evidence/13`](../evidence/13-validate-pass.txt) - 46/46, exit 0 | `df42b54` | `__:__` |
+| Validation actually fails when it should | [`evidence/14`](../evidence/14-validate-negative-tests.txt) - exit 1 twice | `df42b54` | `__:__` |
+| Checks isolation and prohibited host ports | `validate.py` `isolation-*`, `prohibited-host-port-closed[*]` | `df42b54` | `__:__` |
+| `failure_test.py`: stop, measure, restore, verify recovery | [`failure_test.py`](../failure_test.py), [`evidence/15`](../evidence/15-failure-test.txt) | `df42b54` | `__:__` |
+| Traffic and errors measured during failure | [`evidence/15`](../evidence/15-failure-test.txt) - 100.00% availability, per-phase p50/p95 | `df42b54` | `__:__` |
+| Recovered backend proven to serve again | [`evidence/15`](../evidence/15-failure-test.txt) phase 3 | `df42b54` | `__:__` |
+| Harsher failure mode measured (paused backend) | [`evidence/16`](../evidence/16-paused-backend-behaviour.txt) - 3x504 before, 0 after | `df42b54` | `__:__` |
+| `backup.sh` / `restore.sh`, restore proven | [`evidence/17`](../evidence/17-backup-restore-proof.txt) | `2a87ccf` | `__:__` |
+| Record survives app + PostgreSQL container recreation | [`evidence/09`](../evidence/09-stageC-persistence.txt) | `432f4e2` | `__:__` |
 | Exact test/backup/restore commands documented | [`README.md`](../README.md) | docs | `__:__` |
-| CI on push and pull request | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `7e8f5b4` | `__:__` |
-| CI: checkout -> syntax -> build -> start -> wait -> validate | `ci.yml` `verify` job, 17 steps | `7e8f5b4` | `__:__` |
-| CI fails when validation fails | `validate.py` exits 1; the step is not `continue-on-error` | `7e8f5b4` | `__:__` |
-| Extra credit: image / security scan | `ci.yml` `scan` job (Trivy image + fs secrets/misconfig) | `7e8f5b4` | `__:__` |
+| CI on push and pull request | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `966dd6d` | `__:__` |
+| CI: checkout -> syntax -> build -> start -> wait -> validate | `ci.yml` `verify` job, 17 steps | `966dd6d` | `__:__` |
+| CI fails when validation fails | `validate.py` exits 1; the step is not `continue-on-error` | `966dd6d` | `__:__` |
+| Extra credit: image / security scan | `ci.yml` `scan` job (Trivy image + fs secrets/misconfig) | `966dd6d` | `__:__` |
 
 ### Part 4 - Documentation
 
 | Requirement | File | Commit | Video |
 |---|---|---|---|
 | README: setup, build, start/stop, test, failure, backup/restore, cleanup | [`README.md`](../README.md) | docs | `__:__` |
-| troubleshooting.md with failed attempts and retests | [`troubleshooting.md`](../troubleshooting.md) | `9dd0850`+ | `__:__` |
-| log_analysis.md: all answers, commands, counts, correlation | [`log_analysis.md`](../log_analysis.md) | `c383369` | `__:__` |
+| troubleshooting.md with failed attempts and retests | [`troubleshooting.md`](../troubleshooting.md) | `322ab4c`+ | `__:__` |
+| log_analysis.md: all answers, commands, counts, correlation | [`log_analysis.md`](../log_analysis.md) | `d1185ca` | `__:__` |
 | decisions.md: at least 5 decisions with trade-offs and limits | [`decisions.md`](../decisions.md) - 12 | docs | `__:__` |
 | security_review.md: at least 8 concrete risks | [`security_review.md`](../security_review.md) - 14, of which 4 remain open | docs | `__:__` |
 | Implemented fixes separated from production plans | `security_review.md` Part A vs Part B | docs | `__:__` |

@@ -6,7 +6,7 @@ supplied starter as cloned, before any repair. Raw captures live in `evidence/`.
 Environment: Windows 11 host, Docker Desktop 29.3.1 (Linux containers, WSL2 backend),
 Compose v5.1.0, Git Bash for shell commands. All times UTC.
 
-Baseline commit under investigation: `8442da3` (starter v2.0.0, tag `starter-v2.0.0`).
+Baseline commit under investigation: `aa49fb3` (starter v2.0.0, tag `starter-v2.0.0`).
 
 ---
 
@@ -317,7 +317,7 @@ Baseline commit under investigation: `8442da3` (starter v2.0.0, tag `starter-v2.
 
   Raw captures: `evidence/06-stageA-verify.txt`, `evidence/07-stageB-verify.txt`,
   `evidence/09-stageC-persistence.txt`, `evidence/10-stageD-isolation.txt`.
-- **Related commits:** `9f9a8fe`, `43495c3`, `a1757e4`, `e59319c`.
+- **Related commits:** `e3ea094`, `ea1d99b`, `432f4e2`, `fb9012a`.
 
 ---
 

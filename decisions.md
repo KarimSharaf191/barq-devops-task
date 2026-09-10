@@ -30,7 +30,7 @@ Global assumptions, true for all of them:
   have made every diagnostic step in `troubleshooting.md` impossible to perform live.
 - **Trade-off:** a digest pin does not float security patches. It goes stale silently,
   and only a human bumping it fixes that.
-- **Evidence / commit:** `b828e52`.
+- **Evidence / commit:** `2eeca70`.
 - **Production improvement:** Renovate or Dependabot raising a PR per digest bump, gated
   on the same CI, plus the Trivy job already in `.github/workflows/ci.yml` promoted from
   reporting to blocking once a triage process exists for it.
@@ -50,8 +50,8 @@ Global assumptions, true for all of them:
   situation where it matters.
 - **Trade-off:** liveness this shallow will not notice an app that is up but permanently
   broken - a deadlocked worker still answers `/health`.
-- **Evidence / commit:** `9f9a8fe` (the starter probed `/healthz`, which does not exist,
-  so both apps were permanently unhealthy), `b828e52` (`app/healthcheck.py`).
+- **Evidence / commit:** `e3ea094` (the starter probed `/healthz`, which does not exist,
+  so both apps were permanently unhealthy), `2eeca70` (`app/healthcheck.py`).
 - **Production improvement:** Kubernetes-style split - `/health` as liveness, `/ready` as
   a readiness gate that removes the pod from the load balancer without restarting it.
 
@@ -69,7 +69,7 @@ Global assumptions, true for all of them:
   difference between "answered 200" and "answered 200 with the wrong body".
 - **Trade-off:** a Python interpreter start per probe is heavier than `curl` - roughly
   30ms every 5s per container. Irrelevant here, worth revisiting at high container density.
-- **Evidence / commit:** `b828e52`; `docker inspect` output in
+- **Evidence / commit:** `2eeca70`; `docker inspect` output in
   `evidence/12-stageF-hardening.txt`.
 
 ## 4. Networks: two networks, `backend` internal, and NGINX on `frontend` only
@@ -86,7 +86,7 @@ Global assumptions, true for all of them:
   had. It makes every container one `nc` away from the database.
 - **Trade-off:** the apps straddle both networks, so they remain the pivot point. Two
   networks reduce blast radius, they do not eliminate it.
-- **Evidence / commit:** `e59319c`; `validate.py` asserts it both ways - by topology and
+- **Evidence / commit:** `fb9012a`; `validate.py` asserts it both ways - by topology and
   by proving nginx cannot resolve the names at runtime (`evidence/10-stageD-isolation.txt`).
 - **Production improvement:** network policy at the orchestrator level plus mTLS between
   tiers, so the boundary does not depend on the docker0 bridge.
@@ -103,7 +103,7 @@ Global assumptions, true for all of them:
   bug rather than fixing it.
 - **Trade-off:** round robin distributes *requests*, not *load*. The moment endpoint cost
   diverges, this is the wrong policy.
-- **Evidence / commit:** `566601c`; before/after in
+- **Evidence / commit:** `add6a06`; before/after in
   `evidence/08-nginx-worker-rr-anomaly.txt` and `evidence/11-stageE-availability.txt`;
   `troubleshooting.md` entry 13.
 
@@ -127,7 +127,7 @@ Global assumptions, true for all of them:
   straight to the client.
 - **Trade-off:** a `POST` that times out mid-flight still fails for the user. That is the
   correct failure - a duplicate record is worse than a 504 the client can retry knowingly.
-- **Evidence / commit:** `566601c`, `90331a9`; `evidence/15-failure-test.txt` shows
+- **Evidence / commit:** `add6a06`, `df42b54`; `evidence/15-failure-test.txt` shows
   100.00% GET and POST availability with a backend stopped.
 - **Production improvement:** an `Idempotency-Key` header persisted with the row, which
   makes retries safe unconditionally and removes the trade-off entirely.
@@ -153,7 +153,7 @@ Global assumptions, true for all of them:
 - **Trade-off:** with `max_fails=3`, the first three requests to a newly hung backend are
   still slow (~4.9s) before it is ejected. Open-source nginx has no active health checks,
   so some client-visible latency during detection is unavoidable.
-- **Evidence / commit:** `90331a9`; before/after in
+- **Evidence / commit:** `df42b54`; before/after in
   `evidence/16-paused-backend-behaviour.txt`; `troubleshooting.md` entry 17.
 - **Production improvement:** a load balancer with **active** health probes, which ejects
   a peer before any client request hits it.
@@ -175,7 +175,7 @@ Global assumptions, true for all of them:
 - **Trade-off:** a memory limit turns a leak into an OOM kill instead of a slow host.
   That is the better failure, but it is still a failure, and 256M is a guess informed by
   one workload rather than by a load test.
-- **Evidence / commit:** `566601c`; `validate.py` asserts a restart policy and a non-zero
+- **Evidence / commit:** `add6a06`; `validate.py` asserts a restart policy and a non-zero
   memory limit for every service.
 - **Production improvement:** limits derived from real percentile usage, plus alerting on
   OOM kills and on sustained throttling, which a limit alone will not tell you about.
@@ -196,7 +196,7 @@ Global assumptions, true for all of them:
   slower) and `appendonly no` with RDB only (up to 15 minutes of loss).
 - **Trade-off:** `everysec` can lose up to one second of counter increments on an unclean
   stop. For a request counter that is the right trade; for money it would not be.
-- **Evidence / commit:** `a1757e4`; `evidence/09-stageC-persistence.txt` shows record
+- **Evidence / commit:** `432f4e2`; `evidence/09-stageC-persistence.txt` shows record
   `id=3` surviving `docker compose rm -sf app-01 app-02 postgres` followed by `up -d`.
 - **Production improvement:** PITR with continuous WAL archiving and a restore rehearsed
   on a schedule, plus off-host storage - a named volume on one machine is not a backup.
@@ -221,7 +221,7 @@ Global assumptions, true for all of them:
   `BarqLabOnly_...` password, because the brief requires keeping the starter history
   intact. It is synthetic lab data, and it is now dead - the password was regenerated, so
   the committed value opens nothing.
-- **Evidence / commit:** `43495c3`; `evidence/07-stageB-verify.txt` shows
+- **Evidence / commit:** `ea1d99b`; `evidence/07-stageB-verify.txt` shows
   `/srv/app.env: No such file or directory` in the image and `barq_app:***@` in the log.
 - **Production improvement:** a real secret manager (Vault, AWS/GCP secret manager) with
   short-lived, automatically rotated database credentials.
@@ -245,7 +245,7 @@ Global assumptions, true for all of them:
   writable home for a feature this deployment never uses - but a non-fatal `[ERROR]` on
   every start is exactly how operators learn to ignore error logs
   (`troubleshooting.md` entry 15).
-- **Evidence / commit:** `b828e52`; `evidence/12-stageF-hardening.txt` shows
+- **Evidence / commit:** `2eeca70`; `evidence/12-stageF-hardening.txt` shows
   `uid=10001(app)`, writes to `/srv` refused, and `grep -c ERROR` returning 0.
 
 ## 12. Validation discovers services instead of hard-coding names
@@ -262,5 +262,5 @@ Global assumptions, true for all of them:
   on camera at the worst possible moment.
 - **Trade-off:** discovery makes the scripts depend on Compose labels and on services
   being named `app-*`. A renamed service silently drops out of the checks.
-- **Evidence / commit:** `90331a9`, `da49e44`; `validate.py` reports
+- **Evidence / commit:** `df42b54`, `2a87ccf`; `validate.py` reports
   `expected-services-present` with the discovered list so a silent drop-out is visible.

@@ -28,7 +28,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   moved every secret to a git-ignored `.env` with a placeholder-only `.env.example`, and
   added `config/app.env`, `.env` and `.env.*` to both `.gitignore` and `.dockerignore`.
   The lab password was regenerated, so the value in the baseline commit is dead.
-  Commit `43495c3`.
+  Commit `ea1d99b`.
 - **Production follow-up:** a real secret manager issuing short-lived, rotated database
   credentials; `gitleaks` or `trufflehog` as a pre-commit hook and a CI gate; and
   history rewriting or credential rotation for anything already committed.
@@ -58,7 +58,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   rotate one copy, the other keeps working until it silently does not. **High.**
 - **Implemented fix:** exactly one copy, `POSTGRES_PASSWORD` in `.env`, interpolated into
   both the postgres service and the app's `DATABASE_URL`. The two can no longer disagree
-  because there is no longer a second value. Commit `43495c3`.
+  because there is no longer a second value. Commit `ea1d99b`.
 - **Production follow-up:** the same principle enforced by construction - the application
   reads the credential from the secret store, not from a copy.
 - **How to verify:** `grep -c 'POSTGRES_PASSWORD' docker-compose.yml` is 1, and that one
@@ -74,7 +74,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
 - **Implemented fix:** `USER app:app` (uid 10001), plus `cap_drop: ALL`,
   `no-new-privileges:true`, `read_only: true` and a size-capped tmpfs at `/tmp`. nginx
   likewise runs as uid 101 with a read-only root, listening on 8080 in-container because
-  an unprivileged process cannot bind port 80. Commit `b828e52`.
+  an unprivileged process cannot bind port 80. Commit `2eeca70`.
 - **Production follow-up:** a seccomp and AppArmor profile, user-namespace remapping so
   container uid 10001 is not a real host uid, and rootless Docker or Podman.
 - **How to verify:** `python validate.py` runs `runs-as-non-root[...]` for every app and
@@ -89,7 +89,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   design - would have reached the database without touching the application. **High.**
 - **Implemented fix:** nginx is on `frontend` only; `backend` is `internal: true`, which
   also denies the datastores outbound internet access and so raises the cost of
-  exfiltration from a compromised database. Commit `e59319c`.
+  exfiltration from a compromised database. Commit `fb9012a`.
 - **Production follow-up:** orchestrator network policy plus mTLS between tiers, so the
   boundary does not depend on a bridge network.
 - **How to verify:** `validate.py` checks it twice - by topology and by proving at runtime
@@ -107,7 +107,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   edit, and `127.0.0.1` binding is no protection on a machine with any other local user
   or a port-forwarding tunnel.
 - **Implemented fix:** both `ports:` blocks removed. nginx is the only publisher. Commit
-  `e59319c`.
+  `fb9012a`.
 - **Production follow-up:** database access through a bastion or an authenticated proxy
   with audit logging; never a published port.
 - **How to verify:** `validate.py` asserts `only-edge-publishes-a-host-port` and that
@@ -125,7 +125,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   original store. **High.**
 - **Implemented fix:** `redact_url()` in `app/server.py`, applied before logging, with
   three unit tests including a password that itself contains an `@`. The log now reads
-  `postgresql://barq_app:***@postgres:5432/barq_tasks`. Commits `43495c3`, `b828e52`.
+  `postgresql://barq_app:***@postgres:5432/barq_tasks`. Commits `ea1d99b`, `2eeca70`.
 - **Production follow-up:** redaction in the logging pipeline as well as at the call site
   (defence in depth), and a CI check that fails on credential-shaped strings in captured
   log output.
@@ -150,7 +150,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
 - **Implemented fix:** volume mounted at the real PGDATA with `PGDATA` set to a
   sub-directory; `tmpfs` removed; Redis given AOF plus a named volume and
   `maxmemory-policy noeviction` so the shared counter is never evicted as if it were
-  cache. Commit `a1757e4`.
+  cache. Commit `432f4e2`.
 - **Production follow-up:** PITR with continuous WAL archiving to off-host storage, and a
   restore rehearsed on a schedule rather than assumed.
 - **How to verify:** `validate.py` checks `postgres-pgdata-on-named-volume` and
@@ -166,7 +166,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   the data first*: create a row, dump, insert a second row and delete an old one,
   restore, then confirm the post-dump row is gone and the deleted row is back. CI runs
   the same round trip and fails the build if the post-dump row survives. Commits
-  `da49e44`, `7e8f5b4`.
+  `2a87ccf`, `966dd6d`.
 - **Production follow-up:** off-host encrypted storage, retention and integrity
   monitoring, and an automated restore drill into a scratch database on a schedule.
 - **How to verify:** `./backup.sh && FORCE=1 ./restore.sh`; full transcript in
@@ -184,7 +184,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
 - **Implemented fix:** `proxy_next_upstream error timeout http_502 http_503 http_504` with
   a retry budget above the read timeout, `max_fails=3 fail_timeout=5s`, a shared
   round-robin zone, and `restart: unless-stopped`. Measured: 100.00% GET **and** POST
-  availability with a backend stopped. Commits `566601c`, `90331a9`.
+  availability with a backend stopped. Commits `add6a06`, `df42b54`.
 - **Production follow-up:** a load balancer with active health probes, and more than one
   host.
 - **How to verify:** `python failure_test.py` (`evidence/15-failure-test.txt`).
@@ -199,7 +199,7 @@ findings would be rated far higher in a real deployment, and the ratings below s
   request flood starves every neighbour. **Medium.**
 - **Implemented fix:** `json-file` with `max-size: 10m, max-file: 3` on every service
   (bounded at 30M each, ~150M total), and CPU/memory limits and reservations per service.
-  Commit `566601c`.
+  Commit `add6a06`.
 - **Production follow-up:** ship logs off-host so rotation is not the retention policy,
   and alert on disk pressure, OOM kills and sustained CPU throttling - a limit tells you
   nothing by itself.
@@ -290,16 +290,16 @@ a marketing document.
 
 | # | Finding | Severity (this lab / production) | Status |
 |---|---|---|---|
-| 1 | Credentials in the image and in Git | Medium / **Critical** | Fixed `43495c3` |
-| 2 | Duplicated, drifted secret | Medium / High | Fixed `43495c3` |
-| 3 | Containers running as root | Medium / High | Fixed `b828e52` |
-| 4 | Edge proxy could reach the datastores | Medium / High | Fixed `e59319c` |
-| 5 | Datastore host ports declared | Low / High | Fixed `e59319c` |
-| 6 | Password written to the application log | Medium / High | Fixed `43495c3` |
-| 7 | Silent total data loss | **Critical** / **Critical** | Fixed `a1757e4` |
-| 8 | Unproved backups | High / High | Fixed `da49e44` |
-| 9 | No failover | Medium / Medium | Fixed `566601c` |
-| 10 | Unbounded logs and resources | Medium / Medium | Fixed `566601c` |
+| 1 | Credentials in the image and in Git | Medium / **Critical** | Fixed `ea1d99b` |
+| 2 | Duplicated, drifted secret | Medium / High | Fixed `ea1d99b` |
+| 3 | Containers running as root | Medium / High | Fixed `2eeca70` |
+| 4 | Edge proxy could reach the datastores | Medium / High | Fixed `fb9012a` |
+| 5 | Datastore host ports declared | Low / High | Fixed `fb9012a` |
+| 6 | Password written to the application log | Medium / High | Fixed `ea1d99b` |
+| 7 | Silent total data loss | **Critical** / **Critical** | Fixed `432f4e2` |
+| 8 | Unproved backups | High / High | Fixed `2a87ccf` |
+| 9 | No failover | Medium / Medium | Fixed `add6a06` |
+| 10 | Unbounded logs and resources | Medium / Medium | Fixed `add6a06` |
 | 11 | Plaintext HTTP; unauthenticated Redis | Low / **Critical** | **Open** |
 | 12 | No authn/authz or rate limiting | Low / High | **Open** |
 | 13 | Single point of failure below the app tier | High / High | **Open** |
