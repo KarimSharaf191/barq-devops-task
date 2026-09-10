@@ -15,8 +15,8 @@ which parts of the repository were **not** AI-assisted.
   `architecture.pdf`.
 - **Where it was not used:** the environment repair itself (`docker-compose.yml`,
   `nginx/nginx.conf`, `Dockerfile`, `app/`), the validation, failure and backup scripts
-  (`scripts/validate.py`, `scripts/failure_test.py`, `scripts/backup.sh`,
-  `scripts/restore.sh`) and the log parser (`scripts/analyze_logs.py`). Those I wrote.
+  (`validate.py`, `failure_test.py`, `backup.sh`, `restore.sh`) and the log parser
+  (`scripts/analyze_logs.py`). Those I wrote.
 - **Supplied by BARQ and unchanged except where noted:** everything under `logs/`,
   `assessment/`, `scripts/video_challenge.py`, `video_challenge.sh`, `app/server.py`'s
   original endpoint logic, `tests/test_app.py`'s original cases and `database/init.sql`.
@@ -87,10 +87,10 @@ Beyond the BARQ-supplied files listed at the top, the following are my own work:
   liveness/readiness split, the two-network separation, the shared round-robin `zone`,
   the retry and timeout ladder, the non-root gunicorn image and the stdlib healthcheck.
   The reasoning behind each is in `decisions.md`.
-- **The validation, failure and backup scripts.** `scripts/validate.py`,
-  `scripts/failure_test.py`, `scripts/backup.sh` and `scripts/restore.sh` - including
-  the Compose-based service discovery used instead of hard-coded container names, and
-  the `finally` block that restarts the victim after a Ctrl+C mid-test.
+- **The validation, failure and backup scripts.** `validate.py`, `failure_test.py`,
+  `backup.sh` and `restore.sh` - including the Compose-based service discovery used
+  instead of hard-coded container names, and the `finally` block that restarts the
+  victim after a Ctrl+C mid-test.
 - **The log parser.** `scripts/analyze_logs.py` and the analysis in `log_analysis.md`,
   including the decision not to deduplicate on `request_id` and not to quote a single
   p95 over a bimodal 5xx sample.
