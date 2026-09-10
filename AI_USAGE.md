@@ -57,8 +57,10 @@ are documented as my regressions, not as starter faults, because that is what th
   claim is asserted from `netstat`, `docker port`, `/proc/net/tcp` or `getent` inside the
   container.
 - **How verified:** every entry cites the command and its real output; raw captures are
-  in `evidence/00`-`evidence/19`. The commands themselves were run by me, and a
-  hypothesis survived into `troubleshooting.md` only once its output was on disk.
+  in `evidence/00`-`evidence/21`, listed file by file with what each one proves in
+  [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md). The commands themselves were run by
+  me, and a hypothesis survived into `troubleshooting.md` only once its output was on
+  disk.
 
 ### Documentation and the architecture diagram
 

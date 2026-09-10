@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Repository URL | `__________________` (fill in after the first push) |
+| Repository URL | https://github.com/KarimSharaf191/barq-devops-task |
 | Final commit | `__________________` |
 | Matching CI run | `__________________` |
 | Continuous 12-18 minute video URL | `__________________` |
@@ -147,6 +147,60 @@ and the repair is `docker network connect` or `docker unpause` - neither needs
 [`evidence/16`](../evidence/16-paused-backend-behaviour.txt).
 
 ---
+
+## Evidence file manifest
+
+Every file in [`evidence/`](../evidence) is raw output captured at the moment the command
+ran, numbered in the order the investigation happened. Nothing here is edited after
+capture: where output is ugly, truncated or embarrassing, it stays that way, because an
+edited capture is not evidence. 22 files, 89 KB, all plain text.
+
+**Baseline - the broken state, before any fix**
+
+| File | What it captures |
+|---|---|
+| [`00-compose-config.err`](../evidence/00-compose-config.err) | stderr of `docker compose config` at baseline. **This file is empty, and that is the finding**: the Compose file parsed without error, so the faults were never syntax. An empty capture is kept rather than deleted, because "no output" is itself the result. |
+| [`01-baseline-build.txt`](../evidence/01-baseline-build.txt) | The image building from the starter Dockerfile |
+| [`02-baseline-up.txt`](../evidence/02-baseline-up.txt) | The starter stack coming up for the first time |
+| [`03-baseline-symptoms.txt`](../evidence/03-baseline-symptoms.txt) | The first symptom, exactly as encountered: `curl: (52) Empty reply from server`, plus the host listening sockets, port mappings and container logs taken in the same minute |
+| [`04-baseline-deepdive.txt`](../evidence/04-baseline-deepdive.txt) | Inside the nginx container: nothing is listening on port 81, though Compose publishes it. Also the one place the dead baseline password still appears in tracked files - see `security_review.md` finding 1 |
+| [`05-baseline-networks-identity.txt`](../evidence/05-baseline-networks-identity.txt) | Baseline network membership, showing nginx wrongly attached to **both** networks |
+
+**Stage-by-stage retests - one capture per fix commit**
+
+| File | What it captures |
+|---|---|
+| [`06-stageA-verify.txt`](../evidence/06-stageA-verify.txt) | Connectivity restored: `/health` and `/ready` answered through nginx, 10x `/instance` |
+| [`07-stageB-verify.txt`](../evidence/07-stageB-verify.txt) | `/ready` reporting both PostgreSQL and Redis ready, and distinct app identities |
+| [`08-nginx-worker-rr-anomaly.txt`](../evidence/08-nginx-worker-rr-anomaly.txt) | 16 nginx worker processes - the reason 12/12 requests appeared to hit one backend |
+| [`09-stageC-persistence.txt`](../evidence/09-stageC-persistence.txt) | `PGDATA` resolved onto the named volume instead of the container filesystem |
+| [`10-stageD-isolation.txt`](../evidence/10-stageD-isolation.txt) | Network membership after the fix: nginx on `frontend` only, and `getent` failing inside nginx |
+| [`11-stageE-availability.txt`](../evidence/11-stageE-availability.txt) | nginx as uid 101, read-only root, round-robin fairness immediately after a reload (12/0 before the `zone` directive), and a 20-GET failover with app-01 stopped |
+| [`12-stageF-hardening.txt`](../evidence/12-stageF-hardening.txt) | The app as uid 10001 under gunicorn, and every endpoint exercised against real PostgreSQL and Redis |
+
+**Proofs of the automation**
+
+| File | What it captures |
+|---|---|
+| [`13-validate-pass.txt`](../evidence/13-validate-pass.txt) | `validate.py` - 46 passed, 0 failed, exit 0 |
+| [`14-validate-negative-tests.txt`](../evidence/14-validate-negative-tests.txt) | `validate.py` deliberately **failing** and exiting 1, twice, under two different induced faults. A validator that only ever passes proves nothing |
+| [`15-failure-test.txt`](../evidence/15-failure-test.txt) | `failure_test.py` - baseline, outage and recovery phases, 100.00% GET and POST availability with per-phase p50/p95 |
+| [`16-paused-backend-behaviour.txt`](../evidence/16-paused-backend-behaviour.txt) | The harsher failure mode: a *paused* backend, three client-visible 504s before the timeout fix and zero after, with the explanation of why a stopped backend never cost a POST |
+| [`17-backup-restore-proof.txt`](../evidence/17-backup-restore-proof.txt) | A real restore: 210 rows in the dump, data changed afterwards, then the change proven undone |
+
+**Log analysis**
+
+| File | What it captures |
+|---|---|
+| [`18-log-analysis-output.txt`](../evidence/18-log-analysis-output.txt) | The full ten-section analyzer output over the three supplied log files |
+| [`19-log-analysis-summary.json`](../evidence/19-log-analysis-summary.json) | The same run as machine-readable JSON: 720 distinct requests, 13.19% 5xx, p95 2.001s overall against 0.093s for successful requests alone |
+
+**Final checks**
+
+| File | What it captures |
+|---|---|
+| [`20-final-clean-run.txt`](../evidence/20-final-clean-run.txt) | Every gate the CI pipeline enforces, re-run locally against a stack rebuilt from an empty state (`down -v`, then `up --build --wait`) |
+| [`21-live-procedures-dry-run.txt`](../evidence/21-live-procedures-dry-run.txt) | A rehearsal of the two procedures performed live in the video - the third instance and the 8080 -> 8090 port change - both **reverted afterwards**, so the repository ships two instances on 8080 and both actions are genuinely performed on camera |
 
 ## How to re-verify everything from a clean checkout
 
