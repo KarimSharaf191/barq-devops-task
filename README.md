@@ -15,7 +15,7 @@ documented as mine. `validate.py` runs **46 checks** and exits non-zero if any f
 | [`log_analysis.md`](log_analysis.md) | All ten log questions, answered by [`scripts/analyze_logs.py`](scripts/analyze_logs.py) |
 | [`decisions.md`](decisions.md) | 12 decisions with the alternative rejected and what it costs |
 | [`security_review.md`](security_review.md) | 14 findings - 10 fixed, **4 still open** in this submission |
-| [`AI_USAGE.md`](AI_USAGE.md) | AI was used extensively; where, what was rejected, how it was verified |
+| [`AI_USAGE.md`](AI_USAGE.md) | AI use in investigation, docs and the diagram; what was rejected, how it was verified |
 | [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md) | requirement -> file -> commit -> video timestamp |
 | [`architecture.png`](architecture.png) / [`.pdf`](architecture.pdf) | Request flow, ports, networks, storage, health relationships |
 | [`evidence/`](evidence/) | Raw captured output for every claim above |
