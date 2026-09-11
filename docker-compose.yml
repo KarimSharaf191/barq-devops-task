@@ -62,7 +62,11 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"',
+        ]
       interval: 3s
       timeout: 3s
       retries: 10
@@ -136,6 +140,13 @@ services:
     environment:
       <<: *app-env
       INSTANCE_ID: "app-02"
+
+  app-03:
+    <<: *app
+    container_name: app-03
+    environment:
+      <<: *app-env
+      INSTANCE_ID: "app-03"
   nginx:
     image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
     container_name: nginx
@@ -157,10 +168,16 @@ services:
         condition: service_healthy
       app-02:
         condition: service_healthy
+      app-03:
+        condition: service_healthy
     healthcheck:
       # wget ships with the busybox userland already inside nginx:alpine, so the
       # probe adds no packages and no extra attack surface.
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/nginx-health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O - http://127.0.0.1:8080/nginx-health || exit 1",
+        ]
       interval: 5s
       timeout: 3s
       retries: 3
